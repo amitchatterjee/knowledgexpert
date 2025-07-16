@@ -1,0 +1,57 @@
+services:
+  ollama:
+    image: ollama/ollama:0.9.2
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma
+    container_name: chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/data
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:5.19
+    container_name: neo4j
+    ports:
+      - "7474:7474"   # HTTP UI
+      - "7687:7687"   # Bolt protocol
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - neo4j_data:/data
+    restart: unless-stopped
+
+  huggingface-embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
+    container_name: huggingface-embeddings
+    ports:
+      - "8080:80"
+    environment:
+      - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+      - DEVICE=cpu
+    volumes:
+      - huggingface_data:/data
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+    driver: local
+    name: ollama_data
+  chroma_data:
+    driver: local
+    name: chroma_data
+  neo4j_data:
+    driver: local
+    name: neo4j_data
+  huggingface_data:
+    driver: local
+    name: huggingface_data
