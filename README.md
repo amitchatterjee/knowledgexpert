@@ -56,8 +56,28 @@ docker exec -it ollama ollama pull codellama:latest
 docker exec -it ollama ollama run deepseek-r1
 ```
 
-## Execute Knowledgexpert
+### Configure model and other params
+```bash
+mkdir -p $HOME/.knowledgexpert/conf
+cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/config.json $HOME/.knowledgexpert/conf
+```
 
-### Using CLI
+## Execute Knowledgexpert cli
+```bash
+# Use anthropic claude as the graph llm and deepseek (running on lambda.ai) as the general llm
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl http://localhost:8080 --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:deepseek-r1-671b' --useGraphRag --graphLlmApiEndpoint 'https://api.anthropic.com'  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
-### API service
+# Use anthropic claude as the graph llm and llama (running on lambda.ai) as the general llm
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl http://localhost:8080 --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+
+# Use codellama as the graph llm (running on ollama) and llama (running on lambda.ai) as the general llm
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl http://localhost:8080 --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
+
+# Use llama as the graph llm (running on lambda.ai) and llama (running on lambda.ai) as the general llm
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl http://localhost:8080 --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
+```
+
+## Execute Knowledgexpert API
+cd $KNOWLEDGEXPERT_HOME/src
+uvicorn knowledgexpert.api:app --host 0.0.0.0 --port 9000
+
