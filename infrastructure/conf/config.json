@@ -1,0 +1,19 @@
+{
+    "llmModel": "openai:llama-4-scout-17b-16e-instruct",
+    "llmApiEndpoint": "https://api.lambda.ai/v1",
+    "embeddingModel": "all-MiniLM-L6-v2",
+    "chromaHost": "localhost",
+    "chromaPort": 8000,
+    "baseCollection": "rules_collection",
+    "format": "raw",
+    "contextPaths": [],
+    "embeddingApiUrl": "http://localhost:8080",
+    "useGraphRag": true,
+    "neo4jUri": "bolt://localhost:7687",
+    "neo4jUser": "neo4j",
+    "neo4jPassword": "password",
+    "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
+    "graphLlmApiEndpoint": "https://api.anthropic.com",
+    "verbose": true,
+    "log": "INFO"
+}

@@ -18,7 +18,7 @@ echo 'source ~/ai-venv/bin/activate' >> ~/.bashrc
 ```
 
 The virtual environment will now automatically activate when you open a new terminal.
-## Verification
+### Verification
 
 Verify the virtual environment is active by checking Python's location:
 ```bash
@@ -29,8 +29,8 @@ which python
 ### Add the necessary environment variables to ~/.bashrc
 ```bash
 # Change as needed
-export KNOWLEDGEXPORT_HOME=$GIT_HOME/git/knowledgexpert
-export KNOWLEDGEXPORT_VSCODE_HOME=$GIT_HOME/git/knowledgexpert-vscode
+export KNOWLEDGEXPERT_HOME=$GIT_HOME/git/knowledgexpert
+export KNOWLEDGEXPERT_VSCODE_HOME=$GIT_HOME/git/knowledgexpert-vscode
 
 # Apply the changes immediately
 source ~/.bashrc
@@ -42,11 +42,11 @@ source ~/.bashrc
 ```
 
 ## Setup the infrastructure components needed for this service
-1. Bring up the docker containers.
+### Bring up the docker containers.
 ```bash
     docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
 ```
-1. Setup the models, etc.
+### Setup the models, etc.
 ```bash
 docker exec -it ollama ollama pull deepseek-r1
 docker exec -it ollama ollama pull gemma:latest
@@ -55,3 +55,9 @@ docker exec -it ollama ollama pull codellama:latest
 # To run and test (not needed, if accessing from langchain)
 docker exec -it ollama ollama run deepseek-r1
 ```
+
+## Execute Knowledgexpert
+
+### Using CLI
+
+### API service
