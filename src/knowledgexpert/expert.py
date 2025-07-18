@@ -27,6 +27,7 @@ from langchain.retrievers import EnsembleRetriever
 from langchain_community.graphs import Neo4jGraph
 from langchain.chains import GraphCypherQAChain
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
@@ -106,7 +107,16 @@ def build_faiss_store_from_context(context_paths, embeddings):
     return None
 
 def setup_embeddings(args):
-    return HuggingFaceEmbeddings(model_name=args.embeddingModel)
+    if args.embeddingApiUrl:
+        # Use remote HuggingFace Inference API endpoint
+        return HuggingFaceInferenceAPIEmbeddings(
+            api_url=args.embeddingApiUrl,
+            model_name=args.embeddingModel,
+            api_key=""
+        )
+    else:
+        # Use local HuggingFace model
+        return HuggingFaceEmbeddings(model_name=args.embeddingModel)
 
 def setup_vector_store(args, embeddings):
     faiss_store = build_faiss_store_from_context(args.contextPaths, embeddings)

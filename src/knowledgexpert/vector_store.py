@@ -8,6 +8,7 @@ from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
+
 def split_python_code_by_function(code):
     """Split Python code into chunks by function and class definitions."""
     tree = ast.parse(code)
@@ -29,6 +30,7 @@ def parse_args():
     parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
     parser.add_argument("--embeddingModel", type=str, default="all-MiniLM-L6-v2", help="Embedding model name")
+    parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Remote HuggingFace Inference API endpoint URL (optional)")
     parser.add_argument("--clear", action="store_true", help="Purge the collection before adding new documents")
     parser.add_argument("--print", action="store_true", help="Print each chunk's source, metadata, and content")
     parser.add_argument("--store", action="store_true", help="Store the chunks in the vector store")
@@ -69,7 +71,19 @@ def main(args):
             logger.info("Purging old values from store...")
             if args.collectionName in [col.name for col in chroma_client.list_collections()]:
                 chroma_client.delete_collection(args.collectionName)
-        embedding_function = HuggingFaceEmbeddings(model_name=args.embeddingModel)
+        # Support remote HuggingFace endpoint if embeddingApiUrl is provided
+        embedding_function = None
+        embedding_api_url = getattr(args, 'embeddingApiUrl', None)
+        if embedding_api_url:
+            # TODO: this part is not working because of token size and other limit. To debug, use docker logs
+            embedding_function = HuggingFaceInferenceAPIEmbeddings(
+                api_url=embedding_api_url,
+                model_name=args.embeddingModel,
+                api_key=""
+            )
+        else:
+            embedding_function = HuggingFaceEmbeddings(model_name=args.embeddingModel)
+        
         vector_store = Chroma(
             client=chroma_client,
             collection_name=args.collectionName,
