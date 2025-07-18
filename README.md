@@ -62,6 +62,16 @@ mkdir -p $HOME/.knowledgexpert/conf
 cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/config.json $HOME/.knowledgexpert/conf
 ```
 
+## Build the Knowledgebase
+1. Clone the repositories - knowledgenet and knowledgenet-examples
+1. Set environment variables: KNOWLEDGENET_HOME and KNOWLEDGENET_EX_HOME. Add it to $HOME/.bashrc
+1. Run the following commands:
+```bash
+    python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear  --store
+
+    python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" --clear --store
+```
+
 ## Execute Knowledgexpert cli
 ```bash
 # Use anthropic claude as the graph llm and deepseek (running on lambda.ai) as the general llm
@@ -78,6 +88,9 @@ python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl http:
 ```
 
 ## Execute Knowledgexpert API
-cd $KNOWLEDGEXPERT_HOME/src
-uvicorn knowledgexpert.api:app --host 0.0.0.0 --port 9000
+uvicorn knowledgexpert.copilot_api:app --host 0.0.0.0 --port 9000 --app-dir "$KNOWLEDGEXPERT_HOME/src"
 
+## Query the vector database
+```bash
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/vector_query.py
+```

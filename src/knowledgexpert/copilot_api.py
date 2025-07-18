@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from knowledgexpert.expert import handle_question, init as expert_init
+import logging
+
+'''
+Copilot Chat participant backend
+'''
 
 app = FastAPI()
-args = None  # Declare globals
+args = None 
+logger = logging.getLogger()
 
 def init(args_dict):
     global args
@@ -12,8 +18,10 @@ def init(args_dict):
         def __init__(self, d):
             self.__dict__.update(d)
     args = ArgsNamespace(args_dict)
-    # print("Args attributes:", vars(args))
-    expert_init(args)  # Initialize knowledge_expert globals
+    log_level = getattr(logging, args.log.upper(), logging.INFO)
+    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
+    logger.info("Args attributes: %s", vars(args))
+    expert_init(args, logger)
 
 import json
 import os
@@ -31,5 +39,7 @@ class QueryRequest(BaseModel):
 
 @app.post("/ask")
 def ask(request: QueryRequest):
+    logger.debug(f"Received query: {request.query}, session_id: {request.session_id}")
     result = handle_question(request.query, request.session_id, args)
+    logger.debug(f"handle_question result: {result}")
     return {"result": str(result)}

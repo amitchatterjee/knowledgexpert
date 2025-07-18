@@ -208,13 +208,9 @@ def setup_vector_chain(args, retriever, llm):
         )
     return rag_chain
 
-def init(args):
+def init(args, parent_logger):
     global embeddings, retriever, llm, rag_chain, chat_with_history, graph_chain, logger
-    # Set up logging based on --log CLI parameter
-    log_level = getattr(logging, args.log.upper(), logging.INFO)
-    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
-    logger = logging.getLogger("knowledgenet")
-
+    logger = parent_logger
     logger.info("Initializing Knowledge Expert using parameters: %s", args)
     
     embeddings = setup_embeddings(args)
@@ -326,6 +322,9 @@ def print_structured_output(out, console):
 
 if __name__ == "__main__":  
     args = parse_args()
+    log_level = getattr(logging, args.log.upper(), logging.INFO)
+    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
-    init(args)
+    init(args, logger)
     serve_cli(args)
