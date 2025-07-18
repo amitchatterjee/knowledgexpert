@@ -21,7 +21,8 @@ def init_vector_store(args):
     if embedding_api_url:
         embedding_function = HuggingFaceInferenceAPIEmbeddings(
             api_url=embedding_api_url,
-            model_name=args.embeddingModel
+            model_name=args.embeddingModel,
+            api_key=""
         )
     else:
         embedding_function = HuggingFaceEmbeddings(model_name=args.embeddingModel)

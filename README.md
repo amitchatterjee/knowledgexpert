@@ -69,7 +69,7 @@ cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/config.json $HOME/.knowledgexpert/co
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" --clear --store --embeddingModel "all-MiniLM-L6-v2"
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'all-MiniLM-L6-v2' --clean --store
 ```
 
 ## Execute Knowledgexpert cli

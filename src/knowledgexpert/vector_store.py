@@ -58,7 +58,7 @@ def main(args):
         all_docs.append((docs, metadata))
    
     logger.info("Chunking documents...")
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     doc_chunks = []
     for each in all_docs:
         chunk = create_chunks(each, splitter)
@@ -75,7 +75,6 @@ def main(args):
         embedding_function = None
         embedding_api_url = getattr(args, 'embeddingApiUrl', None)
         if embedding_api_url:
-            # TODO: this part is not working because of token size and other limit. To debug, use docker logs
             embedding_function = HuggingFaceInferenceAPIEmbeddings(
                 api_url=embedding_api_url,
                 model_name=args.embeddingModel,
@@ -90,7 +89,13 @@ def main(args):
             embedding_function=embedding_function
         )
         logger.info("Storing newly-found document chunks...")
-        ids = vector_store.add_documents(documents=doc_chunks)
+        ids = []
+        batch_size = 32
+        #doc_chunks = [chunk for chunk in doc_chunks if not chunk.metadata.get('source', '').endswith('.py')]
+        for i in range(0, len(doc_chunks), batch_size):
+            batch = doc_chunks[i:i+batch_size]
+            batch_ids = vector_store.add_documents(documents=batch)
+            ids.extend(batch_ids)
         logger.info(f"Stored {len(ids)} chunks in collection '{args.collectionName}'.")
 
 def print_chunk_info(chunk):
@@ -110,12 +115,15 @@ def create_chunks(doc_tuple, splitter):
             import_block = '\n'.join(import_lines) + '\n' if import_lines else ''
             for chunk in split_python_code_by_function(each.page_content):
                 if isinstance(chunk, str) and chunk.strip():
-                    # Prepend imports to each chunk
-                    chunk_with_imports = import_block + chunk
-                    doc_chunk = type(each)(page_content=chunk_with_imports, metadata=each.metadata)
-                    doc_chunk.metadata.update({'type': 'code', 'language': 'python'})
-                    doc_chunk.metadata.update(doc_tuple[1])
-                    doc_chunks.append(doc_chunk)
+                    # Use splitter to further split the function/class chunk
+                    sub_chunks = splitter.split_text(chunk)
+                    for sub_chunk in sub_chunks:
+                        if isinstance(sub_chunk, str) and sub_chunk.strip():
+                            chunk_with_imports = import_block + sub_chunk
+                            doc_chunk = type(each)(page_content=chunk_with_imports, metadata=each.metadata)
+                            doc_chunk.metadata.update({'type': 'code', 'language': 'python'})
+                            doc_chunk.metadata.update(doc_tuple[1])
+                            doc_chunks.append(doc_chunk)
         else:
             for chunk in splitter.split_documents([each]):
                 if isinstance(chunk.page_content, str) and chunk.page_content.strip():
