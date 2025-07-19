@@ -5,7 +5,7 @@ import chromadb
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 
@@ -25,11 +25,13 @@ def split_python_code_by_function(code):
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
     parser.add_argument("--documents", nargs='+', type=str, help="List of documents to process. This arg must be in the format: dir_path;key1:val1,key2:val2,... The system will process all files of type - python and md located under the directory specified by dir_path", default=[])
+    parser.add_argument("--chunkSize", type=int, default=500, help="Chunk size for splitters (tokens)")
+    parser.add_argument("--chunkOverlap", type=int, default=50, help="Chunk overlap for splitters (tokens)")
     parser.add_argument("--log", type=str, default="INFO", help="Log severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
     parser.add_argument("--collectionName", type=str, default="rules_collection", help="ChromaDB collection name")
     parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
-    parser.add_argument("--embeddingModel", type=str, default="all-MiniLM-L6-v2", help="Embedding model name")
+    parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L-6-v3", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Remote HuggingFace Inference API endpoint URL (optional)")
     parser.add_argument("--clear", action="store_true", help="Purge the collection before adding new documents")
     parser.add_argument("--print", action="store_true", help="Print each chunk's source, metadata, and content")
@@ -58,10 +60,11 @@ def main(args):
         all_docs.append((docs, metadata))
    
     logger.info("Chunking documents...")
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    py_splitter = PythonCodeTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
+    txt_splitter = TokenTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     doc_chunks = []
     for each in all_docs:
-        chunk = create_chunks(each, splitter)
+        chunk = create_chunks(each, py_splitter=py_splitter, txt_splitter=txt_splitter)
         if args.print:
             print_chunk_info(chunk)
         doc_chunks.extend(chunk)
@@ -104,31 +107,27 @@ def print_chunk_info(chunk):
         print(f"Metadata: {doc_chunk.metadata}")
         print(f"Content:\n{doc_chunk.page_content}\n{'-'*60}")
 
-def create_chunks(doc_tuple, splitter):
+def create_chunks(doc_tuple, txt_splitter, py_splitter):
     doc_chunks = []
     for each in doc_tuple[0]:
         source = each.metadata.get('source', '')
         if source.endswith('.py'):
-            # Extract import statements from the module header
-            lines = each.page_content.splitlines()
-            import_lines = [line for line in lines if line.strip().startswith(('import ', 'from '))]
-            import_block = '\n'.join(import_lines) + '\n' if import_lines else ''
-            for chunk in split_python_code_by_function(each.page_content):
+            # Use PythonCodeTextSplitter for Python files
+            py_chunks = py_splitter.split_text(each.page_content)
+            for chunk in py_chunks:
                 if isinstance(chunk, str) and chunk.strip():
-                    # Use splitter to further split the function/class chunk
-                    sub_chunks = splitter.split_text(chunk)
-                    for sub_chunk in sub_chunks:
-                        if isinstance(sub_chunk, str) and sub_chunk.strip():
-                            chunk_with_imports = import_block + sub_chunk
-                            doc_chunk = type(each)(page_content=chunk_with_imports, metadata=each.metadata)
-                            doc_chunk.metadata.update({'type': 'code', 'language': 'python'})
-                            doc_chunk.metadata.update(doc_tuple[1])
-                            doc_chunks.append(doc_chunk)
+                    doc_chunk = type(each)(page_content=chunk, metadata=each.metadata)
+                    doc_chunk.metadata.update({'type': 'code', 'language': 'python'})
+                    doc_chunk.metadata.update(doc_tuple[1])
+                    doc_chunks.append(doc_chunk)
         else:
-            for chunk in splitter.split_documents([each]):
-                if isinstance(chunk.page_content, str) and chunk.page_content.strip():
-                    chunk.metadata.update(doc_tuple[1])
-                    doc_chunks.append(chunk)
+            # Use TokenTextSplitter for text files
+            txt_chunks = txt_splitter.split_text(each.page_content)
+            for chunk in txt_chunks:
+                if isinstance(chunk, str) and chunk.strip():
+                    doc_chunk = type(each)(page_content=chunk, metadata=each.metadata)
+                    doc_chunk.metadata.update(doc_tuple[1])
+                    doc_chunks.append(doc_chunk)
     return doc_chunks
 
 if __name__ == "__main__":

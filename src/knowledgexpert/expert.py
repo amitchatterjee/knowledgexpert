@@ -121,15 +121,23 @@ def setup_embeddings(args):
 def setup_vector_store(args, embeddings):
     faiss_store = build_faiss_store_from_context(args.contextPaths, embeddings)
     chroma_client = chromadb.HttpClient(host=args.chromaHost, port=args.chromaPort)
+    vectorDb_kwargs = {}
+    # Only apply score threshold if using similarity_score_threshold
+    if args.searchAlgorithm == "similarity_score_threshold" and args.scoreThreshold is not None:
+        vectorDb_kwargs["search_kwargs"] = {"score_threshold": args.scoreThreshold}
     vectorDb = Chroma(
         client=chroma_client,
         collection_name=args.baseCollection,
         embedding_function=embeddings
     )
+    # Use searchAlgorithm for retriever
     if faiss_store:
-        retriever = EnsembleRetriever(retrievers=[vectorDb.as_retriever(), faiss_store.as_retriever()], weights=[0.5, 0.5])
+        retriever = EnsembleRetriever(
+            retrievers=[vectorDb.as_retriever(search_type=args.searchAlgorithm, **vectorDb_kwargs), faiss_store.as_retriever()],
+            weights=args.ensembleWeights
+        )
     else:
-        retriever = vectorDb.as_retriever()
+        retriever = vectorDb.as_retriever(search_type=args.searchAlgorithm, **vectorDb_kwargs)
     return retriever
 
 def setup_llm(args):
@@ -240,10 +248,12 @@ def parse_args():
     # Vector RAG options
     parser.add_argument("--llmModel", default='openai:deepseek-r1-671b', help="LLM model (default: openai:deepseek-r1-671b)")
     parser.add_argument("--llmApiEndpoint", default='https://api.lambda.ai/v1', help="LLM API endpoint (default: https://api.lambda.ai/v1)")
-    parser.add_argument("--embeddingModel", default='all-MiniLM-L6-v2', help="Embedding model (default: all-MiniLM-L6-v2)")
+    parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L-6-v3', help="Embedding model (default: msmarco-MiniLM-L-6-v3)")
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
     parser.add_argument("--baseCollection", default='rules_collection', help="Base collection name (default: rules_collection)")
+    parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
+    parser.add_argument("--scoreThreshold", type=float, default=None, help="Score threshold for similarity_score_threshold search (optional)")
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
     parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
@@ -256,6 +266,7 @@ def parse_args():
     parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output from gag chain.")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
+    parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
     return parser.parse_args()
 
 def load_additional_context(paths):

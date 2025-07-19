@@ -36,7 +36,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+      - MODEL_ID=sentence-transformers/msmarco-MiniLM-L-6-v3
       - DEVICE=cpu
     volumes:
       - huggingface_data:/data
