@@ -229,7 +229,6 @@ def setup_vector_chain(args, retriever, llm):
 def init(args, parent_logger):
     global embeddings, retriever, llm, rag_chain, chat_with_history, graph_chain, logger
     logger = parent_logger
-    logger.info("Initializing Knowledge Expert using parameters: %s", args)
     
     embeddings = setup_embeddings(args)
     retriever = setup_vector_store(args, embeddings)
@@ -243,7 +242,7 @@ def init(args, parent_logger):
         history_messages_key="history",
     )
 
-def parse_args():
+def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="KnowledgeNet Code & Graph Assistant")
     # Vector RAG options
     parser.add_argument("--llmModel", default='openai:deepseek-r1-671b', help="LLM model (default: openai:deepseek-r1-671b)")
@@ -267,7 +266,10 @@ def parse_args():
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output from gag chain.")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
-    return parser.parse_args()
+    if args_list is not None:
+        return parser.parse_args(args_list)
+    else:
+        return parser.parse_args()
 
 def load_additional_context(paths):
     context_data = []
@@ -347,5 +349,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
+    logger.info("Initializing Knowledge Expert using parameters: %s", args)
     init(args, logger)
     serve_cli(args)

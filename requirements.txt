@@ -1,0 +1,21 @@
+requests
+rich
+neo4j
+chromadb
+langchain
+langchain-community
+langchain-anthropic
+langchain-cli
+langchain-ollama
+langchain-experimental
+beautifulsoup4
+sentence-transformers
+langchain-huggingface
+langchain-chroma
+faiss-cpu
+langchain-openai
+langchain-neo4j
+
+# Temporary workaround
+httpx==0.27.2 
+anthropic==0.38.0

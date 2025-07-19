@@ -37,8 +37,8 @@ source ~/.bashrc
 ```
 
 ### Install pre-requisite software
-```bash    
-    pip install -r requirements.txt
+```bash   
+    pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
 ```
 
 ## Setup the infrastructure components needed for this service

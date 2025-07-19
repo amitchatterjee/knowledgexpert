@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from knowledgexpert.expert import handle_question, init as expert_init
+from knowledgexpert.expert import handle_question, init as expert_init, parse_args
 import logging
+import json
+import os
 
 '''
 Copilot Chat participant backend
@@ -17,14 +19,21 @@ def init(args_dict):
     class ArgsNamespace:
         def __init__(self, d):
             self.__dict__.update(d)
+        def __str__(self):
+            return f"{self.__class__.__name__}({', '.join(f'{k}={v}' for k, v in self.__dict__.items())})"
+        def __repr__(self):
+            return __self.__str()
+        
+    default_args = parse_args([])
     args = ArgsNamespace(args_dict)
+    # Merge default_args with args, with args overriding default_args
+    merged_args = vars(default_args)
+    merged_args.update(args_dict)
+    args = ArgsNamespace(merged_args)
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
-    logger.info("Args attributes: %s", vars(args))
+    logger.info("Args: %s", args)
     expert_init(args, logger)
-
-import json
-import os
 
 # Load configuration from a JSON file
 knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "config.json")
