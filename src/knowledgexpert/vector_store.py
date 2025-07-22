@@ -5,7 +5,7 @@ import chromadb
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
-from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter
+from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 
@@ -61,10 +61,11 @@ def main(args):
    
     logger.info("Chunking documents...")
     py_splitter = PythonCodeTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
+    md_splitter = MarkdownTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     txt_splitter = TokenTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     doc_chunks = []
     for each in all_docs:
-        chunk = create_chunks(each, py_splitter=py_splitter, txt_splitter=txt_splitter)
+        chunk = create_chunks(each, py_splitter=py_splitter, md_splitter=md_splitter, txt_splitter=txt_splitter)
         if args.print:
             print_chunk_info(chunk)
         doc_chunks.extend(chunk)
@@ -107,7 +108,7 @@ def print_chunk_info(chunk):
         print(f"Metadata: {doc_chunk.metadata}")
         print(f"Content:\n{doc_chunk.page_content}\n{'-'*60}")
 
-def create_chunks(doc_tuple, txt_splitter, py_splitter):
+def create_chunks(doc_tuple, md_splitter, py_splitter, txt_splitter):
     doc_chunks = []
     for each in doc_tuple[0]:
         source = each.metadata.get('source', '')
@@ -120,8 +121,16 @@ def create_chunks(doc_tuple, txt_splitter, py_splitter):
                     doc_chunk.metadata.update({'type': 'code', 'language': 'python'})
                     doc_chunk.metadata.update(doc_tuple[1])
                     doc_chunks.append(doc_chunk)
+        elif source.endswith('.md'):
+            # Use MarkdownTextSplitter for markdown files
+            md_chunks = md_splitter.split_text(each.page_content)
+            for chunk in md_chunks:
+                if isinstance(chunk, str) and chunk.strip():
+                    doc_chunk = type(each)(page_content=chunk, metadata=each.metadata)
+                    doc_chunk.metadata.update(doc_tuple[1])
+                    doc_chunks.append(doc_chunk)
         else:
-            # Use TokenTextSplitter for text files
+            # Use TextTokenSplitter for other text files as fallback
             txt_chunks = txt_splitter.split_text(each.page_content)
             for chunk in txt_chunks:
                 if isinstance(chunk, str) and chunk.strip():
