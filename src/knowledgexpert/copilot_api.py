@@ -22,7 +22,7 @@ def init(args_dict):
         def __str__(self):
             return f"{self.__class__.__name__}({', '.join(f'{k}={v}' for k, v in self.__dict__.items())})"
         def __repr__(self):
-            return __self.__str()
+            return self.__str()
         
     default_args = parse_args([])
     args = ArgsNamespace(args_dict)
@@ -40,6 +40,7 @@ knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "
 config_path = knowledgexpert_conf if knowledgexpert_conf and os.path.isfile(knowledgexpert_conf) else "config.json"
 with open(config_path, "r") as f:
     config = json.load(f)
+
 init(config)
 
 class QueryRequest(BaseModel):

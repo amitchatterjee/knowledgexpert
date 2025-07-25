@@ -31,8 +31,10 @@ from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
+# TODO: make these folders available via command line
 hist_dir = os.path.join(os.path.expanduser("~"), ".knowledgexpert/history")
 os.makedirs(hist_dir, exist_ok=True)
+prompt_dir = os.path.join(os.path.expanduser("~"), ".knowledgexpert/conf")
 
 class CodingAdvice(BaseModel):
     summary: Optional[str] = Field("A one-line summary of the code snippet")
@@ -164,13 +166,11 @@ def setup_graph_chain(args):
         username=args.neo4jUser,
         password=args.neo4jPassword
     )
-    system_prompt = SystemMessagePromptTemplate.from_template(
-        "You are a helpful assistant for querying a Neo4j knowledge graph. "
-        "The graph captures the relationship between python modules, classes, functions and attributes for an application. "
-        "The nodes are named appropriately. "
-        "Answer the user's graph-related questions clearly and concisely. "
-        "If the question is unrelated to the graph, don't attempt to create the query"
-    )
+    graph_prompt_path = os.path.join(prompt_dir, "graph_prompt.txt")
+    with open(graph_prompt_path, "r", encoding="utf-8") as f:
+        system_prompt_text = f.read()
+
+    system_prompt = SystemMessagePromptTemplate.from_template(system_prompt_text)
     human_prompt = HumanMessagePromptTemplate.from_template("{query}")
     chat_prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
     graph_llm = init_chat_model(args.graphLlmModel, base_url=args.graphLlmApiEndpoint)
@@ -183,16 +183,11 @@ def setup_graph_chain(args):
     )
 
 def setup_vector_chain(args, retriever, llm):
+    llm_prompt_path = os.path.join(prompt_dir, "llm_prompt.txt")
+    with open(llm_prompt_path, "r", encoding="utf-8") as f:
+        llm_prompt_text = f.read()
     prompt = PromptTemplate(
-        template=(
-        "You are a helpful code assistant. First, use the following context to answer the user's question. "
-        "If you are generating code, please include the necessary imports. "
-        "If the graph context is insufficient, use the additional vector context.\n\n"
-        "Graph Context:\n{graph_context}\n\n"
-        "Context: \n{context}\n\n"
-        "History:\n{history}\n"
-        "User: {input}\n"
-        ),
+        template=llm_prompt_text,
         input_variables=["context", "history", "input"]
     )
     def coding_advice_to_json(obj):

@@ -15,6 +15,7 @@ langchain-chroma
 faiss-cpu
 langchain-openai
 langchain-neo4j
+langgraph
 
 # Temporary workaround
 httpx==0.27.2 

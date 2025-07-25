@@ -38,13 +38,13 @@ source ~/.bashrc
 
 ### Install pre-requisite software
 ```bash   
-    pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
+pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
 ```
 
 ## Setup the infrastructure components needed for this service
 ### Bring up the docker containers.
 ```bash
-    docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
+docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
 ```
 ### Setup the models, etc.
 ```bash
@@ -59,7 +59,7 @@ docker exec -it ollama ollama run deepseek-r1
 ### Configure model and other params
 ```bash
 mkdir -p $HOME/.knowledgexpert/conf
-cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/config.json $HOME/.knowledgexpert/conf
+cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/* $HOME/.knowledgexpert/conf/
 ```
 
 ## Build the Knowledgebase
@@ -81,7 +81,7 @@ python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http
 python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Use codellama as the graph llm (running on ollama) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py ---embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
+python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
 
 # Use llama as the graph llm (running on lambda.ai) and llama (running on lambda.ai) as the general llm
 python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
