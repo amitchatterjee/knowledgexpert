@@ -58,8 +58,7 @@ docker exec -it ollama ollama run deepseek-r1
 
 ### Configure model and other params
 ```bash
-mkdir -p $HOME/.knowledgexpert/conf
-cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/* $HOME/.knowledgexpert/conf/
+cp -R $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/
 ```
 
 ## Build the Knowledgebase
@@ -67,33 +66,33 @@ cp $KNOWLEDGEXPERT_HOME/infrastructure/conf/* $HOME/.knowledgexpert/conf/
 1. Set environment variables: KNOWLEDGENET_HOME and KNOWLEDGENET_EX_HOME. Add it to $HOME/.bashrc
 1. Run the following commands:
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
+python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --clear --store
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --clear --store
 ```
 
 ## Execute Knowledgexpert cli
 ```bash
 # Use anthropic claude as the graph llm and deepseek (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3'  --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:deepseek-r1-671b' --useGraphRag --graphLlmApiEndpoint 'https://api.anthropic.com'  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3'  --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:deepseek-r1-671b' --useGraphRag --graphLlmApiEndpoint 'https://api.anthropic.com'  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Use anthropic claude as the graph llm and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Use codellama as the graph llm (running on ollama) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
 
 # Use llama as the graph llm (running on lambda.ai) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
 
 # Use anthropic claude as the graph llm and the general llm
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/expert.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 ```
 
 ## Execute Knowledgexpert API
-uvicorn knowledgexpert.copilot_api:app --host 0.0.0.0 --port 9000 --app-dir "$KNOWLEDGEXPERT_HOME/src"
+uvicorn copilot_api:app --host 0.0.0.0 --port 9000 --app-dir "$KNOWLEDGEXPERT_HOME/src"
 
 ## Query the vector database
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/knowledgexpert/vector_query.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3'
+python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3'
 ```
