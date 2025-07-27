@@ -7,6 +7,9 @@ import json
 import os
 import re
 
+# NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
+
+
 '''
 Copilot Chat participant backend
 '''

@@ -4,6 +4,8 @@ from rich.console import Console
 import argparse
 from knowledgexpert.expert import Expert, CodingAdvice
 
+# NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
+
 def print_structured_output(out, console):
     if out.summary:
         console.print(f'Summary: {out.summary}')
