@@ -1,5 +1,5 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/expert",
+    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/coding-expert",
 
     "llmModel": "openai:llama-4-scout-17b-16e-instruct",
     "llmApiEndpoint": "https://api.lambda.ai/v1",
@@ -19,8 +19,8 @@
     "neo4jUser": "neo4j",
     "neo4jPassword": "password",
 
-    "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
-    "graphLlmApiEndpoint": "https://api.anthropic.com",
+    "graphLlmModel": "openai:llama-4-scout-17b-16e-instruct",
+    "graphLlmApiEndpoint": "https://api.lambda.ai/v1",
 
     "searchAlgorithm": "mmr",
     "scoreThreshold": 0.9,

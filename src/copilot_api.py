@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from knowledgexpert.expert import Expert 
+from knowledgexpert.expert import Expert
 from expert_cli import parse_args
 import logging
 import json
@@ -18,7 +18,6 @@ app = FastAPI()
 args = None 
 logger = logging.getLogger()
 
-# Simulate argparse.Namespace from dict
 class ArgsNamespace:
     def __init__(self, d):
         self.__dict__.update(d)
@@ -40,6 +39,8 @@ def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
             print(k, '=', v)
             #print(pattern.findall(v))
             resolved[k] = pattern.sub(replacer, v)
+        else:
+            resolved[k] = v
     return resolved
 
 def init(args_dict:dict[str,any]):
