@@ -27,8 +27,9 @@ from knowledgexpert.util import build_faiss_store_from_context
 hist_dir = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history")
 os.makedirs(hist_dir, exist_ok=True)
 
-default_prompt_dir = os.path.join(os.path.expanduser(
+default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "expert")
+
 
 class CodingAdvice(BaseModel):
     summary: Optional[str] = Field("A one-line summary of the code snippet")
@@ -40,37 +41,24 @@ class CodingAdvice(BaseModel):
     references: Optional[list] = Field(
         description="A list of URLs containing more information")
 
+
 class Expert:
     def __init__(self, args, logger):
         self.args = args
         self.logger = logger
-        self.prompt_dir = args.promptDir if args.promptDir else default_prompt_dir
-        
-        self.embeddings = setup_embeddings(args.embeddingModel, args.embeddingApiUrl)
-        self.retriever = self._setup_vector_store(
-            chromaHost=args.chromaHost,
-            chromaPort=args.chromaPort,
-            baseCollection=args.baseCollection,
-            searchAlgorithm=args.searchAlgorithm,
-            scoreThreshold=args.scoreThreshold,
-            ensembleWeights=args.ensembleWeights,
-            context_paths=args.contextPaths,
-            embeddings=self.embeddings
-        )
-        
-        self.llm = setup_llm(
-            llmModel=args.llmModel,
-            llmApiEndpoint=args.llmApiEndpoint,
-            output_format=args.format
-        )
-        self.graph_chain = self._setup_graph_chain()
-        self.rag_chain = self._setup_vector_chain()
+        self.prompt_dir = args.promptDir if args.promptDir else default_conf_dir
+
+        self.embeddings = setup_embeddings(
+            args.embeddingModel, args.embeddingApiUrl)
+
+        self.graph_chain = self._setup_graph_chain(
+            args.useGraphRag, args.neo4jUri, args.neo4jUser, args.neo4jPassword, args.graphLlmModel, args.graphLlmApiEndpoint, args.verbose)
+
+        self.rag_chain = self._setup_vector_chain(args.chromaHost, args.chromaPort, args.baseCollection, args.searchAlgorithm,
+                                                  args.scoreThreshold, args.ensembleWeights, args.contextPaths, args.llmModel, args.llmApiEndpoint, args.format)
+
         self.chat_with_history = RunnableWithMessageHistory(
-            self.rag_chain,
-            self._get_session_history,
-            input_messages_key="input",
-            history_messages_key="history",
-        )
+            self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")
 
     def _format_docs(self, docs):
         if not docs:
@@ -87,8 +75,7 @@ class Expert:
         file_path = os.path.join(hist_dir, f"history_{session_id}.json")
         return FileChatMessageHistory(file_path=file_path)
 
-
-    def _setup_vector_store(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, context_paths, embeddings):        
+    def _setup_vector_store(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, context_paths, embeddings):
         faiss_store = build_faiss_store_from_context(context_paths, embeddings)
         chroma_client = chromadb.HttpClient(host=chromaHost, port=chromaPort)
         vectorDb_kwargs = {}
@@ -96,10 +83,7 @@ class Expert:
             vectorDb_kwargs["search_kwargs"] = {
                 "score_threshold": scoreThreshold}
         vectorDb = Chroma(
-            client=chroma_client,
-            collection_name=baseCollection,
-            embedding_function=embeddings
-        )
+            client=chroma_client, collection_name=baseCollection, embedding_function=embeddings)
         if faiss_store:
             retriever = EnsembleRetriever(
                 retrievers=[vectorDb.as_retriever(
@@ -111,13 +95,12 @@ class Expert:
                 search_type=searchAlgorithm, **vectorDb_kwargs)
         return retriever
 
+    def _setup_graph_chain(self, useGraphRag, neo4jUri, neo4jUser, neo4jPassword, graphLlmModel, graphLlmApiEndpoint, verbose):
+        if not useGraphRag:
+            return None
 
-    def _setup_graph_chain(self):
-        graph = Neo4jGraph(
-            url=self.args.neo4jUri,
-            username=self.args.neo4jUser,
-            password=self.args.neo4jPassword
-        )
+        graph = Neo4jGraph(url=neo4jUri, username=neo4jUser,
+                           password=neo4jPassword)
         graph_prompt_path = os.path.join(self.prompt_dir, "graph_prompt.txt")
         with open(graph_prompt_path, "r", encoding="utf-8") as f:
             system_prompt_text = f.read()
@@ -128,61 +111,59 @@ class Expert:
         chat_prompt = ChatPromptTemplate.from_messages(
             [system_prompt, human_prompt])
         graph_llm = init_chat_model(
-            self.args.graphLlmModel, base_url=self.args.graphLlmApiEndpoint)
-        return GraphCypherQAChain.from_llm(
-            graph_llm,
-            graph=graph,
-            verbose=self.args.verbose,
-            allow_dangerous_requests=True,
-            prompt=chat_prompt
-        )
+            graphLlmModel, base_url=graphLlmApiEndpoint)
+        return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self):
-        llm_prompt_path = os.path.join(self.prompt_dir, "llm_prompt.txt")
+    def _setup_vector_chain(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, contextPaths, llmModel, llmApiEndpoint, format):
+        retriever = self._setup_vector_store(chromaHost=chromaHost, chromaPort=chromaPort, baseCollection=baseCollection, searchAlgorithm=searchAlgorithm,
+                                             scoreThreshold=scoreThreshold, ensembleWeights=ensembleWeights, context_paths=contextPaths, embeddings=self.embeddings)
+
+        llm = setup_llm(llmModel=llmModel,
+                        llmApiEndpoint=llmApiEndpoint, output_format=format)
+
+        llm_prompt_path = os.path.join(self.prompt_dir, "vector_prompt.txt")
         with open(llm_prompt_path, "r", encoding="utf-8") as f:
             llm_prompt_text = f.read()
-        prompt = PromptTemplate(
-            template=llm_prompt_text,
-            input_variables=["context", "history", "input"]
-        )
+        prompt = PromptTemplate(template=llm_prompt_text, input_variables=[
+                                "context", "history", "input"])
 
         def coding_advice_to_json(obj):
             return obj.model_dump_json()
 
         structured_llm = None
-        if self.args.format == "structured":
-            structured_llm = self.llm.with_structured_output(CodingAdvice)
+        if format == "structured":
+            structured_llm = llm.with_structured_output(CodingAdvice)
+        params = {
+            "interactions": RunnableLambda(lambda x: x["interactions"] if "interactions" in x else "None"),
+            "graph_context": RunnableLambda(lambda x: x["graph_context"] if "graph_context" in x else "None"),
+            "context": RunnableLambda(lambda x: x["input"]) | retriever | self._format_docs,
+            "input": RunnableLambda(lambda x: x["input"]),
+            "history": lambda x: x.get("history", []),
+        }
         if structured_llm:
             rag_chain = (
-                {
-                    "graph_context": RunnableLambda(lambda x: x["graph_context"]),
-                    "context": RunnableLambda(lambda x: x["input"]) | self.retriever | self._format_docs,
-                    "input": RunnableLambda(lambda x: x["input"]),
-                    "history": lambda x: x.get("history", []),
-                }
+                params
                 | RunnableLambda(self._stop_if_no_context)
                 | (prompt | structured_llm)
                 | RunnableLambda(coding_advice_to_json)
             )
         else:
             rag_chain = (
-                {
-                    "graph_context": RunnableLambda(lambda x: x["graph_context"]),
-                    "context": RunnableLambda(lambda x: x["input"]) | self.retriever | self._format_docs,
-                    "input": RunnableLambda(lambda x: x["input"]),
-                    "history": lambda x: x.get("history", []),
-                }
+                params
                 | RunnableLambda(self._stop_if_no_context)
-                | (prompt | self.llm | StrOutputParser())
+                | (prompt | llm | StrOutputParser())
             )
         return rag_chain
 
-    def handle_question(self, user_query, name):
+    def handle_question(self, user_query, name, interactions=''):
         graph_context = ""
         if self.args.useGraphRag:
             self.logger.debug("Step 1: Querying Neo4j graph...")
             try:
-                graph_response = self.graph_chain.invoke({"query": user_query})
+                graph_response = self.graph_chain.invoke(
+                    {"query": user_query, 
+                     "interactions": interactions
+                    })
                 graph_context = graph_response.get("result", "")
                 self.logger.debug("Graph result:\n%s", graph_context)
             except Exception as e:
@@ -190,8 +171,13 @@ class Expert:
                 graph_context = ""
         self.logger.debug("Step 2: Querying vector RAG with graph context...")
         try:
-            out = self.chat_with_history.invoke({"input": user_query, "graph_context": graph_context}, config={
-                                                "configurable": {"session_id": name}})
+            out = self.chat_with_history.invoke({
+                "input": user_query, 
+                "graph_context": graph_context, 
+                "interactions": interactions}, 
+                config={
+                    "configurable": {"session_id": name}
+                })
             if self.args.format == "structured":
                 out = CodingAdvice.model_validate_json(out)
         except ValueError as ve:

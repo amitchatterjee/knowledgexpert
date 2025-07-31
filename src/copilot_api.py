@@ -36,7 +36,7 @@ def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
     resolved = {}
     for k, v in args_dict.items():
         if isinstance(v, str):
-            print(k, '=', v)
+            #print(k, '=', v)
             #print(pattern.findall(v))
             resolved[k] = pattern.sub(replacer, v)
         else:
@@ -58,7 +58,7 @@ def init(args_dict:dict[str,any]):
     expert = Expert(args, logger)
 
 # Load configuration from a JSON file
-knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "copilot", "config.json")
+knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json")
 config_path = knowledgexpert_conf if knowledgexpert_conf and os.path.isfile(knowledgexpert_conf) else "config.json"
 with open(config_path, "r") as f:
     config = json.load(f)

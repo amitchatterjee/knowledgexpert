@@ -1,0 +1,26 @@
+{
+    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/frontline-expert",
+
+    "llmModel": "openai:llama-4-scout-17b-16e-instruct",
+    "llmApiEndpoint": "https://api.lambda.ai/v1",
+
+    "embeddingApiUrl": "http://localhost:8080",
+    "embeddingModel": "msmarco-MiniLM-L-6-v3",
+    
+    "chromaHost": "localhost",
+    "chromaPort": 8000,
+    "baseCollection": "rules_collection",
+
+    "format": "raw",
+    "contextPaths": [],
+    
+    "useGraphRag": false,
+
+    "searchAlgorithm": "mmr",
+    "scoreThreshold": 0.9,
+
+    "ensembleWeights": [0.5, 0.5],
+
+    "verbose": true,
+    "log": "INFO"
+}

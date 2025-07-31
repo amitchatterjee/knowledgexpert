@@ -58,6 +58,7 @@ docker exec -it ollama ollama run deepseek-r1
 
 ### Configure model and other params
 ```bash
+rm -rf $HOME/.knowledgexpert/conf
 cp -R $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/
 ```
 
