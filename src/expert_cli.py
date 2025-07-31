@@ -1,8 +1,22 @@
 import os
 import logging
+from typing import Optional
 from rich.console import Console
 import argparse
-from knowledgexpert.expert import Expert, CodingAdvice
+
+from pydantic import BaseModel, Field
+
+from knowledgexpert.expert import Expert
+
+class CodingAdvice(BaseModel):
+    summary: Optional[str] = Field("A one-line summary of the code snippet")
+    description: Optional[str] = Field(
+        description="Description of the code snippet")
+    code: str = Field(description="A Python Code Snippet")
+    explanation: Optional[str] = Field(
+        description="Detailed explaination of the code")
+    references: Optional[list] = Field(
+        description="A list of URLs containing more information")
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
@@ -78,5 +92,5 @@ if __name__ == "__main__":
     logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
     logger.info("Initializing Knowledge Expert using parameters: %s", args)
-    expert = Expert(args, logger)
+    expert = Expert(args, logger, CodingAdvice)
     serve_cli(expert)

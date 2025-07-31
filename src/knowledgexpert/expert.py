@@ -1,7 +1,5 @@
 import os
-from typing import Optional
 import chromadb
-import string
 
 import os
 
@@ -11,7 +9,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.runnables import RunnableLambda
 from langchain_community.chat_message_histories import FileChatMessageHistory
-from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -30,22 +27,11 @@ os.makedirs(hist_dir, exist_ok=True)
 default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "expert")
 
-
-class CodingAdvice(BaseModel):
-    summary: Optional[str] = Field("A one-line summary of the code snippet")
-    description: Optional[str] = Field(
-        description="Description of the code snippet")
-    code: str = Field(description="A Python Code Snippet")
-    explanation: Optional[str] = Field(
-        description="Detailed explaination of the code")
-    references: Optional[list] = Field(
-        description="A list of URLs containing more information")
-
-
 class Expert:
-    def __init__(self, args, logger):
+    def __init__(self, args, logger, structure=None):
         self.args = args
         self.logger = logger
+        self.structure = structure
         self.prompt_dir = args.promptDir if args.promptDir else default_conf_dir
 
         self.embeddings = setup_embeddings(
@@ -110,8 +96,7 @@ class Expert:
         human_prompt = HumanMessagePromptTemplate.from_template("{query}")
         chat_prompt = ChatPromptTemplate.from_messages(
             [system_prompt, human_prompt])
-        graph_llm = init_chat_model(
-            graphLlmModel, base_url=graphLlmApiEndpoint)
+        graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
     def _setup_vector_chain(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, contextPaths, llmModel, llmApiEndpoint, format):
@@ -132,7 +117,7 @@ class Expert:
 
         structured_llm = None
         if format == "structured":
-            structured_llm = llm.with_structured_output(CodingAdvice)
+            structured_llm = llm.with_structured_output(self.structure)
         params = {
             "interactions": RunnableLambda(lambda x: x["interactions"] if "interactions" in x else "None"),
             "graph_context": RunnableLambda(lambda x: x["graph_context"] if "graph_context" in x else "None"),
@@ -141,6 +126,7 @@ class Expert:
             "history": lambda x: x.get("history", []),
         }
         if structured_llm:
+            params["schema"] = lambda x: self.structure.schema_json()
             rag_chain = (
                 params
                 | RunnableLambda(self._stop_if_no_context)
@@ -179,7 +165,7 @@ class Expert:
                     "configurable": {"session_id": name}
                 })
             if self.args.format == "structured":
-                out = CodingAdvice.model_validate_json(out)
+                out = self.structure.model_validate_json(out)
         except ValueError as ve:
             self.logger.error(
                 "Structured output parsing failed: %s. Showing raw output.", ve)

@@ -1,5 +1,6 @@
+from typing import Optional
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from knowledgexpert.expert import Expert
 from expert_cli import parse_args
 import logging
@@ -13,6 +14,17 @@ import re
 '''
 Copilot Chat participant backend
 '''
+
+# This may not be needed as we are using raw format (in the configuration) for copilot service
+class CodingAdvice(BaseModel):
+    summary: Optional[str] = Field("A one-line summary of the code snippet")
+    description: Optional[str] = Field(
+        description="Description of the code snippet")
+    code: str = Field(description="A Python Code Snippet")
+    explanation: Optional[str] = Field(
+        description="Detailed explaination of the code")
+    references: Optional[list] = Field(
+        description="A list of URLs containing more information")
 
 app = FastAPI()
 args = None 
@@ -55,7 +67,7 @@ def init(args_dict:dict[str,any]):
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger.info("Args: %s", args)
-    expert = Expert(args, logger)
+    expert = Expert(args, logger, CodingAdvice)
 
 # Load configuration from a JSON file
 knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json")
