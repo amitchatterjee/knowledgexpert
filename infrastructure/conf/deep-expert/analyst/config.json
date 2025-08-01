@@ -1,5 +1,5 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/frontline-expert",
+    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/analyst",
 
     "llmModel": "openai:llama-4-scout-17b-16e-instruct",
     "llmApiEndpoint": "https://api.lambda.ai/v1",
@@ -11,7 +11,7 @@
     "chromaPort": 8000,
     "baseCollection": "documents_collection",
 
-    "format": "raw",
+    "format": "structured",
     "contextPaths": [],
     
     "useGraphRag": false,

@@ -1,10 +1,11 @@
 import json
 import os
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import RunnableLambda, RunnableBranch
+from pydantic import BaseModel
 
 from knowledgexpert.util import setup_llm
 from knowledgexpert.expert import Expert
@@ -17,23 +18,41 @@ class ArgsNamespace:
     def __repr__(self):
         return self.__str()
 
+class AnalystOutput(BaseModel):
+    summary: str
+    classification: str
+    codeGenRequirements: str
+    configGenRequirements: str
+    testGenRequirements: str
+    analyis: str
+    references: Optional[list]
+
+    def __str__(self):
+        fields = []
+        for field, value in self.__dict__.items():
+            if value is not None and value != "" and value != []:
+                fields.append(f"{field}:\n{value}")
+        return f"{'\n\n'.join(fields)}"
+
 class ExpertsGraph:
     def __init__(self, logger, args, default_arg_vals):
         self.args = args
         self.logger = logger
-        self.coding_expert = self._init_expert(logger, args.confDir, "coding-expert", default_arg_vals)
-        self.frontline_expert = self._init_expert(logger, args.confDir, "frontline-expert", default_arg_vals)
+        self.analyst = self._init_expert(logger, args.confDir, "analyst", default_arg_vals, AnalystOutput)
+        self.developer = self._init_expert(logger, args.confDir, "developer", default_arg_vals)
         self._setup_graph()
 
     def _setup_graph(self):
         graph = StateGraph(Dict[str, Any])
-        graph.add_node("frontline_expert", RunnableLambda(self.frontline_expert_node))
-        graph.add_node("coding_expert", RunnableLambda(self.coding_expert_node))
+        graph.add_node("analyst", RunnableLambda(self.analyst_node))
+        graph.add_node("router", RunnableLambda(self.router_node))
 
-        graph.add_edge("frontline_expert", "coding_expert")
-        graph.add_edge("coding_expert", END)
+        # graph.add_node("developer", RunnableLambda(self.developer_node))
 
-        graph.set_entry_point("frontline_expert")
+        graph.add_edge("analyst", "router")
+        graph.add_edge("router", END)
+
+        graph.set_entry_point("analyst")
         self.compiled_graph = graph.compile()
 
 
@@ -54,7 +73,7 @@ class ExpertsGraph:
                 resolved[k] = v
         return resolved
 
-    def _init_expert(self, logger, conf_dir, type, default_arg_vals):
+    def _init_expert(self, logger, conf_dir, type, default_arg_vals, structure=None):
         config_path = os.path.join(conf_dir, type, "config.json")
         with open(config_path, "r") as f:
             expert_config = json.load(f)
@@ -64,17 +83,30 @@ class ExpertsGraph:
         merged_args.update(args_dict)
         args = ArgsNamespace(merged_args)
         logger.info(f"Configuration for {type} - {args}")
-        return Expert(args, logger)
+        return Expert(args, logger, structure)
 
-    def frontline_expert_node(self, state):
-        response = self.frontline_expert.handle_question(state["input"], state["user_name"])
-        state["frontline_expert_output"] = response
+    def analyst_node(self, state):
+        response = self.analyst.handle_question(state["input"], state["user_name"])
+        state["analysis_output"] = response
         return state
     
-    def coding_expert_node(self, state):
-        response = self.coding_expert.handle_question(state["input"], state["user_name"], interactions=state["frontline_expert_output"])
-        state["coding_expert_output"] = response
+    def developer_node(self, state):
+        analyst_output = str(state["analysis_output"])
+        response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
+        state["analysis_output"] = analyst_output
+        state["developer_output"] = response
         return state
+    
+    def router_node(self, state):
+        # Use RunnableBranch for routing
+        def routing_predicate(state):
+            return state['analysis_output'].classification
+
+        return RunnableBranch(
+                (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.developer_node)),
+                # default
+                (lambda state: str(state["analysis_output"])))
+
 
     def handle_question(self, user_query, name):
         result = self.compiled_graph.invoke({"input": user_query, "user_name": name})

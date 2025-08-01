@@ -1,5 +1,5 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/coding-expert",
+    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/developer",
 
     "llmModel": "openai:llama-4-scout-17b-16e-instruct",
     "llmApiEndpoint": "https://api.lambda.ai/v1",
