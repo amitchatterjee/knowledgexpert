@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from langchain_core.runnables import RunnableLambda, RunnableBranch
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from knowledgexpert.util import setup_llm
 from knowledgexpert.expert import Expert
@@ -34,23 +34,32 @@ class AnalystOutput(BaseModel):
                 fields.append(f"{field}:\n{value}")
         return f"{'\n\n'.join(fields)}"
 
+
+class CodingOutput(BaseModel):
+    summary: Optional[str] = Field("A one-line summary of the code snippet")
+    description: Optional[str] = Field(
+        description="Description of the code snippet")
+    code: str = Field(description="A Python Code Snippet")
+    explanation: Optional[str] = Field(
+        description="Detailed explaination of the code")
+    references: Optional[list] = Field(
+        description="A list of URLs containing more information")
+
 class ExpertsGraph:
     def __init__(self, logger, args, default_arg_vals):
         self.args = args
         self.logger = logger
         self.analyst = self._init_expert(logger, args.confDir, "analyst", default_arg_vals, AnalystOutput)
-        self.developer = self._init_expert(logger, args.confDir, "developer", default_arg_vals)
+        self.developer = self._init_expert(logger, args.confDir, "developer", default_arg_vals, CodingOutput)
         self._setup_graph()
 
     def _setup_graph(self):
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyst", RunnableLambda(self.analyst_node))
-        graph.add_node("router", RunnableLambda(self.router_node))
+        graph.add_node("request_router", RunnableLambda(self.request_router_node))
 
-        # graph.add_node("developer", RunnableLambda(self.developer_node))
-
-        graph.add_edge("analyst", "router")
-        graph.add_edge("router", END)
+        graph.add_edge("analyst", "request_router")
+        graph.add_edge("request_router", END)
 
         graph.set_entry_point("analyst")
         self.compiled_graph = graph.compile()
@@ -87,28 +96,28 @@ class ExpertsGraph:
 
     def analyst_node(self, state):
         response = self.analyst.handle_question(state["input"], state["user_name"])
-        state["analysis_output"] = response
+        state["analyst_output"] = response
         return state
     
     def developer_node(self, state):
-        analyst_output = str(state["analysis_output"])
+        analyst_output = str(state["analyst_output"])
         response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
-        state["analysis_output"] = analyst_output
-        state["developer_output"] = response
+        state["analyst_output"] = analyst_output
+        state["developer_output"] = str(response)
         return state
     
-    def router_node(self, state):
+    def request_router_node(self, state):
         # Use RunnableBranch for routing
         def routing_predicate(state):
-            return state['analysis_output'].classification
+            return state['analyst_output'].classification
 
         return RunnableBranch(
                 (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.developer_node)),
                 # default
-                (lambda state: str(state["analysis_output"])))
+                (lambda state: str(state["analyst_output"])))
 
 
-    def handle_question(self, user_query, name):
-        result = self.compiled_graph.invoke({"input": user_query, "user_name": name})
+    def handle_question(self, request, name):
+        result = self.compiled_graph.invoke({"input": request, "user_name": name})
         return result
 

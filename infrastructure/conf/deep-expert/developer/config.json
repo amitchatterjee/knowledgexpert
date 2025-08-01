@@ -11,7 +11,7 @@
     "chromaPort": 8000,
     "baseCollection": "rules_collection",
 
-    "format": "raw",
+    "format": "structured",
     "contextPaths": [],
     
     "useGraphRag": true,
