@@ -20,8 +20,8 @@ def process(args, logger, graph):
     user_query = input("Enter your question: ")
     name = os.environ.get("USER", "Unknown")
     response = graph.handle_question(user_query, name)
-    print("Response:", json.dumps(response, indent=2))
-
+    for key, value in response.items():
+        print(f"{key}:\n{'-'*20}\n{value}\n")
 
 if __name__ == "__main__":
     args = parse_args()
