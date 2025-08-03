@@ -29,5 +29,6 @@ if __name__ == "__main__":
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger("DeepExpert")
-    graph = ExpertsGraph(logger, args, default_values([]))
+    dict_args = vars(args)
+    graph = ExpertsGraph(logger, vars(default_values([])), **dict_args)
     process(args, logger, graph)

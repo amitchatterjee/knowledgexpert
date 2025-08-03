@@ -92,5 +92,6 @@ if __name__ == "__main__":
     logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
     logger.info("Initializing Knowledge Expert using parameters: %s", args)
-    expert = Expert(args, logger, CodingAdvice)
+    expert_kwargs = vars(args)
+    expert = Expert(logger, structure=CodingAdvice, **expert_kwargs)
     serve_cli(expert)

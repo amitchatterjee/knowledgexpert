@@ -1,4 +1,7 @@
+from argparse import Namespace
+from logging import Logger
 import os
+from typing import Any
 import chromadb
 
 import os
@@ -28,20 +31,20 @@ default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "expert")
 
 class Expert:
-    def __init__(self, args, logger, structure=None):
-        self.args = args
+    def __init__(self, logger: Logger, structure:Any=None, **kwargs):       
+        self.args = Namespace(**kwargs)
         self.logger = logger
         self.structure = structure
-        self.prompt_dir = args.promptDir if args.promptDir else default_conf_dir
+        self.prompt_dir = self.args.promptDir if self.args.promptDir else default_conf_dir
 
         self.embeddings = setup_embeddings(
-            args.embeddingModel, args.embeddingApiUrl)
+            self.args.embeddingModel, self.args.embeddingApiUrl)
 
         self.graph_chain = self._setup_graph_chain(
-            args.useGraphRag, args.neo4jUri, args.neo4jUser, args.neo4jPassword, args.graphLlmModel, args.graphLlmApiEndpoint, args.verbose)
+            self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
-        self.rag_chain = self._setup_vector_chain(args.chromaHost, args.chromaPort, args.baseCollection, args.searchAlgorithm,
-                                                  args.scoreThreshold, args.ensembleWeights, args.contextPaths, args.llmModel, args.llmApiEndpoint, args.format)
+        self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollection, self.args.searchAlgorithm,
+                              self.args.scoreThreshold, self.args.ensembleWeights, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         self.chat_with_history = RunnableWithMessageHistory(
             self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")

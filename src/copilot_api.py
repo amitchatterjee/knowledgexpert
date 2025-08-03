@@ -30,14 +30,6 @@ app = FastAPI()
 args = None 
 logger = logging.getLogger()
 
-class ArgsNamespace:
-    def __init__(self, d):
-        self.__dict__.update(d)
-    def __str__(self):
-        return f"{self.__class__.__name__}({', '.join(f'{k}={v}' for k, v in self.__dict__.items())})"
-    def __repr__(self):
-        return self.__str()
-
 def replacer(match):
     env_var = match.group(1)
     return os.environ.get(env_var, "")
@@ -56,18 +48,16 @@ def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
     return resolved
 
 def init(args_dict:dict[str,any]):
-    global args, expert
+    global expert
     args_dict = resolve_env_vars(args_dict)
-    default_args = parse_args([])
-    args = ArgsNamespace(args_dict)
+    default_args = vars(parse_args([]))
     # Merge default_args with args, with args overriding default_args
-    merged_args = vars(default_args)
-    merged_args.update(args_dict)
-    args = ArgsNamespace(merged_args)
-    log_level = getattr(logging, args.log.upper(), logging.INFO)
+    args = default_args
+    args.update(args_dict)
+    log_level = getattr(logging, args["log"].upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger.info("Args: %s", args)
-    expert = Expert(args, logger, CodingAdvice)
+    expert = Expert(logger, structure=CodingAdvice, **args)
 
 # Load configuration from a JSON file
 knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json")

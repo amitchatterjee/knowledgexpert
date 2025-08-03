@@ -1,4 +1,6 @@
+from argparse import Namespace
 import json
+from logging import Logger
 import os
 import re
 from typing import Any, Dict, Optional
@@ -7,16 +9,7 @@ from langchain_core.runnables import RunnableLambda, RunnableBranch, RunnablePar
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from knowledgexpert.util import setup_llm
 from knowledgexpert.expert import Expert
-
-class ArgsNamespace:
-    def __init__(self, d):
-        self.__dict__.update(d)
-    def __str__(self):
-        return f"{self.__class__.__name__}({', '.join(f'{k}={v}' for k, v in self.__dict__.items())})"
-    def __repr__(self):
-        return self.__str()
 
 class AnalystOutput(BaseModel):
     summary: str
@@ -71,15 +64,15 @@ write_file = StructuredTool.from_function(
 )
 
 class ExpertsGraph:
-    def __init__(self, logger, args, default_arg_vals):
-        self.args = args
+    def __init__(self, logger:Logger, default_args:dict, **kwargs):
+        self.args = Namespace(**kwargs)
         self.logger = logger
 
-        if not os.path.exists(args.workspaceDir):
-            os.makedirs(args.workspaceDir, exist_ok=True)
+        if not os.path.exists(self.args.workspaceDir):
+            os.makedirs(self.args.workspaceDir, exist_ok=True)
 
-        self.analyst = self._init_expert(logger, args.confDir, "analyst", default_arg_vals, AnalystOutput)
-        self.developer = self._init_expert(logger, args.confDir, "developer", default_arg_vals, CodingOutput)
+        self.analyst = self._init_expert(logger, self.args.confDir, "analyst", default_args, structure=AnalystOutput)
+        self.developer = self._init_expert(logger, self.args.confDir, "developer", default_args, structure=CodingOutput)
         self._setup_graph()
 
     def _setup_graph(self):
@@ -118,12 +111,10 @@ class ExpertsGraph:
         with open(config_path, "r") as f:
             expert_config = json.load(f)
         args_dict = self._resolve_env_vars(expert_config)
-        args = ArgsNamespace(args_dict)
-        merged_args = vars(default_arg_vals)
-        merged_args.update(args_dict)
-        args = ArgsNamespace(merged_args)
+        args = default_arg_vals
+        args.update(args_dict)
         logger.info(f"Configuration for {type} - {args}")
-        return Expert(args, logger, structure)
+        return Expert(logger, structure=structure, **args)
 
     def analyst_node(self, state):
         response = self.analyst.handle_question(state["input"], state["user_name"])
@@ -133,8 +124,7 @@ class ExpertsGraph:
     def developer_node(self, state):
         analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nCode-generation Requirements:\n{state["analyst_output"].codeGenRequirements}"
         response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
-        state["developer_output"] = response
-        return state
+        return {"developer_output": response}
     
     def tester_node(self, state):
         return {"tester_output":"I am not ready to produce tests yet"}
