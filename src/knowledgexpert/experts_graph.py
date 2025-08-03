@@ -124,22 +124,25 @@ class ExpertsGraph:
     def developer_node(self, state):
         analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nCode-generation Requirements:\n{state["analyst_output"].codeGenRequirements}"
         response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
-        return {"developer_output": response}
+        state["developer_output"] = response
+        return state
     
     def tester_node(self, state):
-        return {"tester_output":"I am not ready to produce tests yet"}
+        state["tester_output"] = "I am not ready to produce tests yet"
+        return state
     
     def implementor_node(self, state):
-        return {"implementor_output":"I am not ready to configure yet"}
+        state["implementor_output"] = "I am not ready to configure yet"
+        return state
 
-    def development_tasks_node(self, state):
+    def development_activities_node(self, state):
         parallel = RunnableParallel(
             developer=self.developer_node,
             tester=self.tester_node,
             implementor=self.implementor_node
         )
         result = parallel.invoke(state)
-        state.update(result)
+        #state.update(result)
         return state
 
     def request_router_node(self, state):
@@ -147,7 +150,7 @@ class ExpertsGraph:
             return state["analyst_output"].classification
 
         return RunnableBranch(
-                (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.development_tasks_node)),
+                (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.development_activities_node)),
                 (lambda state: routing_predicate(state) == "test-generation-request", RunnableLambda(self.tester_node)),
                 (lambda state: routing_predicate(state) == "config-generation-request", RunnableLambda(self.implementor_node)),
                 # default
@@ -163,7 +166,7 @@ class ExpertsGraph:
             state["code_writer_tool_output"] = result
         return state
 
-    def handle_question(self, request, name):
+    def handle_request(self, request, name):
         result = self.compiled_graph.invoke({"input": request, "user_name": name})
         return result
 

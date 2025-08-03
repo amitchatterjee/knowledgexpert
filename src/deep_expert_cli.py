@@ -20,7 +20,7 @@ def parse_args(args_list=None):
 def process(args, logger, graph):
     user_query = input("Enter your question/request: ")
     name = os.environ.get("USER", "Unknown")
-    response = graph.handle_question(user_query, name)
+    response = graph.handle_request(user_query, name)
     for key, value in response.items():
         print(f"{key}:\n{'-'*20}\n{value}\n")
 

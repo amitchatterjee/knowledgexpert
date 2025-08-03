@@ -68,9 +68,10 @@ ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --clear --store
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --collectionName 'rules_collection' --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents  "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --clear --store --collectionName 'documents_collection'
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents  "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --clear --store --collectionName 'documents_collection'
+
 ```
 
 ## Execute Knowledgexpert cli
