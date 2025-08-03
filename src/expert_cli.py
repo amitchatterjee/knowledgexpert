@@ -14,7 +14,7 @@ class CodingAdvice(BaseModel):
         description="Description of the code snippet")
     code: str = Field(description="A Python Code Snippet")
     explanation: Optional[str] = Field(
-        description="Detailed explaination of the code")
+        description="Detailed explanation of the code")
     references: Optional[list] = Field(
         description="A list of URLs containing more information")
 

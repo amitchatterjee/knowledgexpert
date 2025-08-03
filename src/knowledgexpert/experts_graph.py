@@ -3,7 +3,7 @@ import os
 import re
 from typing import Any, Dict, Optional
 from langgraph.graph import StateGraph, END
-from langchain_core.runnables import RunnableLambda, RunnableBranch
+from langchain_core.runnables import RunnableLambda, RunnableBranch, RunnableParallel
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
@@ -24,7 +24,7 @@ class AnalystOutput(BaseModel):
     codeGenRequirements: str
     configGenRequirements: str
     testGenRequirements: str
-    analyis: str
+    analysis: str
     references: Optional[list]
 
     def __str__(self):
@@ -42,7 +42,7 @@ class CodingOutput(BaseModel):
     code: str = Field(description="A Python Code Snippet")
     filename: str = Field(description="Python file name")
     explanation: Optional[str] = Field(
-        description="Detailed explaination of the code")
+        description="Detailed explanation of the code")
     references: Optional[list] = Field(
         description="A list of URLs containing more information")
     
@@ -53,15 +53,14 @@ class CodingOutput(BaseModel):
                 fields.append(f"{field}:\n{value}")
         return f"{'\n\n'.join(fields)}"
 
-def write_file_tool(code: str, filename: str) -> str:
+def write_file_tool(code: str, filename: str, directory: str) -> str:
     try:
-        print(f"Writing to file: {filename}")
-        return "Done"
-        if not filename or not code:
+        if not directory or not filename or not code:
             return "Error: Missing 'filename' or 'code' in input."
-        with open(filename, "w") as f:
+        full_path = os.path.join(directory, filename)
+        with open(full_path, "w") as f:
             f.write(code)
-        return f"Successfully wrote to file: {filename}"
+        return f"Successfully wrote to file: {full_path}"
     except Exception as e:
         return f"Error writing to file: {e}"
 
@@ -75,6 +74,10 @@ class ExpertsGraph:
     def __init__(self, logger, args, default_arg_vals):
         self.args = args
         self.logger = logger
+
+        if not os.path.exists(args.workspaceDir):
+            os.makedirs(args.workspaceDir, exist_ok=True)
+
         self.analyst = self._init_expert(logger, args.confDir, "analyst", default_arg_vals, AnalystOutput)
         self.developer = self._init_expert(logger, args.confDir, "developer", default_arg_vals, CodingOutput)
         self._setup_graph()
@@ -83,11 +86,11 @@ class ExpertsGraph:
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyst", RunnableLambda(self.analyst_node))
         graph.add_node("request_router", RunnableLambda(self.request_router_node))
-        graph.add_node("tool", RunnableLambda(self.tool_node))
+        graph.add_node("code_writer_tool", RunnableLambda(self.code_writer_tool_node))
 
         graph.add_edge("analyst", "request_router")
-        graph.add_edge("request_router", "tool")
-        graph.add_edge("tool", END)
+        graph.add_edge("request_router", "code_writer_tool")
+        graph.add_edge("code_writer_tool", END)
 
         graph.set_entry_point("analyst")
         self.compiled_graph = graph.compile()
@@ -128,27 +131,46 @@ class ExpertsGraph:
         return state
     
     def developer_node(self, state):
-        analyst_output = state["analyst_output"].codeGenRequirements
+        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nCode-generation Requirements:\n{state["analyst_output"].codeGenRequirements}"
         response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
         state["developer_output"] = response
         return state
     
+    def tester_node(self, state):
+        return {"tester_output":"I am not ready to produce tests yet"}
+    
+    def implementor_node(self, state):
+        return {"implementor_output":"I am not ready to configure yet"}
+
+    def development_tasks_node(self, state):
+        parallel = RunnableParallel(
+            developer=self.developer_node,
+            tester=self.tester_node,
+            implementor=self.implementor_node
+        )
+        result = parallel.invoke(state)
+        state.update(result)
+        return state
+
     def request_router_node(self, state):
         def routing_predicate(state):
             return state["analyst_output"].classification
 
         return RunnableBranch(
-                (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.developer_node)),
+                (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.development_tasks_node)),
+                (lambda state: routing_predicate(state) == "test-generation-request", RunnableLambda(self.tester_node)),
+                (lambda state: routing_predicate(state) == "config-generation-request", RunnableLambda(self.implementor_node)),
                 # default
                 (lambda state: state))
     
-    def tool_node(self, state):
+    def code_writer_tool_node(self, state):
         developer_output = state["developer_output"] if "developer_output" in state else None
         if developer_output:
             result = write_file.run({
                 "code": state["developer_output"].code, 
+                "directory": self.args.workspaceDir,
                 "filename": state["developer_output"].filename})
-            state["tool_output"] = result
+            state["code_writer_tool_output"] = result
         return state
 
     def handle_question(self, request, name):

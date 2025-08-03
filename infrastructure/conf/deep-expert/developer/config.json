@@ -22,9 +22,6 @@
     "graphLlmModel": "openai:llama-4-scout-17b-16e-instruct",
     "graphLlmApiEndpoint": "https://api.lambda.ai/v1",
 
-    "searchAlgorithm": "mmr",
-    "scoreThreshold": 0.9,
-
     "ensembleWeights": [0.5, 0.5],
 
     "verbose": true,
