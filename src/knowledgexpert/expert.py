@@ -1,4 +1,5 @@
 from argparse import Namespace
+import logging
 from logging import Logger
 import os
 from typing import Any
@@ -37,6 +38,15 @@ class Expert:
         self.structure = structure
         self.prompt_dir = self.args.promptDir if self.args.promptDir else default_conf_dir
 
+        logging.getLogger("langchain").setLevel(self.logger.level)
+        # Suppress HTTP request/response messages
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        # Suppress telemetry messages
+        logging.getLogger("langchain.telemetry").setLevel(logging.WARNING)
+        logging.getLogger("langchain_community.telemetry").setLevel(logging.WARNING)
+
         self.embeddings = setup_embeddings(
             self.args.embeddingModel, self.args.embeddingApiUrl)
 
@@ -46,8 +56,11 @@ class Expert:
         self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollection, self.args.searchAlgorithm,
                               self.args.scoreThreshold, self.args.ensembleWeights, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
-        self.chat_with_history = RunnableWithMessageHistory(
-            self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")
+        if getattr(self.args, "disableHistory", False):
+            self.chat_with_history = self.rag_chain
+        else:
+            self.chat_with_history = RunnableWithMessageHistory(
+                self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")
 
     def _format_docs(self, docs):
         if not docs:
@@ -158,7 +171,7 @@ class Expert:
             except Exception as e:
                 self.logger.error("Graph query failed: %s", e)
                 graph_context = ""
-        self.logger.debug("Step 2: Querying vector RAG with graph context...")
+        self.logger.debug(f"Step 2: Querying vector RAG with graph context: %s", graph_context)
         try:
             out = self.chat_with_history.invoke({
                 "input": user_query, 
@@ -176,4 +189,5 @@ class Expert:
         except Exception as e:
             self.logger.error("Error during chain invocation: %s", e)
             return str(e)
+        self.logger.debug("Vector query output: %s", out)
         return out

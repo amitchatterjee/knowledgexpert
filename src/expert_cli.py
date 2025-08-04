@@ -78,8 +78,8 @@ def parse_args(args_list=None):
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output from gag chain.")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
-    parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/expert)"
-    )
+    parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/expert)")
+    parser.add_argument("--disableHistory", action="store_true", help="Disable message history for the assistant (default: False)")
     if args_list is not None:
         return parser.parse_args(args_list)
     else:
