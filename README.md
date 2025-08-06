@@ -90,6 +90,7 @@ python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhos
 
 # Use anthropic claude as the graph llm and the general llm
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+
 ```
 
 ## Execute Knowledgexpert API

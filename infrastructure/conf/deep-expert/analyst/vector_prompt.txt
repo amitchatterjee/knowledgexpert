@@ -5,8 +5,8 @@ You are a business analyst for a Knowledgenet rules application that are execute
 3. Code-generation requirements. Populate this section only when the classification is code-generation-request.
 4. Configuration-generation requirements. Populate this section only when the classification is configuration-generation-request.
 5. Test-generation requirements. Populate this section only when the classification is code-generation-request or test-generation-request.
-6. Analysis: Provide any additional information based on your analysis.
-
+6. Analysis: Provide any information based on your analysis. If this is a question that you can answer, provide the answer.
+7. References: Specify the source of your data by specifying the file names from where you got the contextual information.
 ----------------------------------------
 Feature Request: 
 {input}

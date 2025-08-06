@@ -15,16 +15,7 @@ import re
 Copilot Chat participant backend
 '''
 
-# This may not be needed as we are using raw format (in the configuration) for copilot service
-class CodingAdvice(BaseModel):
-    summary: Optional[str] = Field("A one-line summary of the code snippet")
-    description: Optional[str] = Field(
-        description="Description of the code snippet")
-    code: str = Field(description="A Python Code Snippet")
-    explanation: Optional[str] = Field(
-        description="Detailed explaination of the code")
-    references: Optional[list] = Field(
-        description="A list of URLs containing more information")
+from knowledgexpert.structures import CodingAdvice
 
 app = FastAPI()
 args = None 

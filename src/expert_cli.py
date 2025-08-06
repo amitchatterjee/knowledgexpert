@@ -3,20 +3,10 @@ import logging
 from typing import Optional
 from rich.console import Console
 import argparse
-
-from pydantic import BaseModel, Field
+import importlib
+import json
 
 from knowledgexpert.expert import Expert
-
-class CodingAdvice(BaseModel):
-    summary: Optional[str] = Field("A one-line summary of the code snippet")
-    description: Optional[str] = Field(
-        description="Description of the code snippet")
-    code: str = Field(description="A Python Code Snippet")
-    explanation: Optional[str] = Field(
-        description="Detailed explanation of the code")
-    references: Optional[list] = Field(
-        description="A list of URLs containing more information")
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
@@ -49,16 +39,13 @@ def serve_cli(expert):
         console.print('The assistant is collecting information and processing them to come up with an answer...')
         out = expert.handle_question(user_query, name)
         console.print("Knowledge Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
-        if type(out) == CodingAdvice:
-            print_structured_output(out, console)
-        else:
-            console.print(out)
+        console.print(out)
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="KnowledgeNet Code & Graph Assistant")
     # Vector RAG options
-    parser.add_argument("--llmModel", default='openai:deepseek-r1-671b', help="LLM model (default: openai:deepseek-r1-671b)")
-    parser.add_argument("--llmApiEndpoint", default='https://api.lambda.ai/v1', help="LLM API endpoint (default: https://api.lambda.ai/v1)")
+    parser.add_argument("--llmModel", default=None, help="LLM model (default: openai:deepseek-r1-671b)")
+    parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint (default: https://api.lambda.ai/v1)")
     parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L-6-v3', help="Embedding model (default: msmarco-MiniLM-L-6-v3)")
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
@@ -72,14 +59,16 @@ def parse_args(args_list=None):
     parser.add_argument("--neo4jUri", type=str, default="bolt://localhost:7687", help="Neo4j connection URI.")
     parser.add_argument("--neo4jUser", type=str, default="neo4j", help="Neo4j username.")
     parser.add_argument("--neo4jPassword", type=str, default="password", help="Neo4j password.")
-    parser.add_argument("--graphLlmModel", type=str, default="ollama:codellama:latest", help="Graph LLM model (langchain convention).")
-    parser.add_argument("--graphLlmApiEndpoint", type=str, default="http://localhost:11434", help="Graph LLM API endpoint.")
+    parser.add_argument("--graphLlmModel", default=None, type=str, help="Graph LLM model (langchain convention).")
+    parser.add_argument("--graphLlmApiEndpoint", default=None, type=str, help="Graph LLM API endpoint.")
     parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output from gag chain.")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
     parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/expert)")
     parser.add_argument("--disableHistory", action="store_true", help="Disable message history for the assistant (default: False)")
+    parser.add_argument("--confDir", default=None, help="Directory containing config.json for base configuration (optional)")
+    parser.add_argument("--structureClass", default="knowledgexpert.structures.CodingAdvice", help="Fully qualified class name for structure (default: knowledgexpert.structures.CodingAdvice)")
     if args_list is not None:
         return parser.parse_args(args_list)
     else:
@@ -87,11 +76,33 @@ def parse_args(args_list=None):
 
 if __name__ == "__main__":  
     args = parse_args()
-    log_level = getattr(logging, args.log.upper(), logging.INFO)
+    base_config = {}
+    if args.confDir:
+        config_path = os.path.join(args.confDir, "config.json")
+        with open(config_path, "r") as f:
+            base_config = json.load(f)
+    if "confDir" in base_config:
+        base_config.pop("confDir", None)
+
+    structure_class_path = args.structureClass
+    delattr(args, "structureClass")
+    
+    merged_config = base_config.copy()
+    for k, v in vars(args).items():
+        if k not in base_config:
+            merged_config[k] = v
+        elif v is not None:
+            merged_config[k] = v
+    # Dynamically import and resolve structure class from string
+    
+    log_level = getattr(logging, merged_config["log"].upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
     logger.info("Initializing Knowledge Expert using parameters: %s", args)
-    expert_kwargs = vars(args)
-    expert = Expert(logger, structure=CodingAdvice, **expert_kwargs)
+
+    module_name, class_name = structure_class_path.rsplit('.', 1)
+    structure_module = importlib.import_module(module_name)
+    structure_class = getattr(structure_module, class_name)
+    expert = Expert(logger, structure=structure_class, **merged_config)
     serve_cli(expert)

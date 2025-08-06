@@ -19,8 +19,8 @@
     "neo4jUser": "neo4j",
     "neo4jPassword": "password",
 
-    "graphLlmModel": "openai:llama-4-scout-17b-16e-instruct",
-    "graphLlmApiEndpoint": "https://api.lambda.ai/v1",
+    "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
+    "graphLlmApiEndpoint": "https://api.anthropic.com",
 
     "ensembleWeights": [0.5, 0.5],
 
