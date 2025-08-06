@@ -91,6 +91,9 @@ python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhos
 # Use anthropic claude as the graph llm and the general llm
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:8080" --embeddingModel 'msmarco-MiniLM-L-6-v3' --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
+# Load command line params from a config file:
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/deep-expert/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
+
 ```
 
 ## Execute Knowledgexpert API
