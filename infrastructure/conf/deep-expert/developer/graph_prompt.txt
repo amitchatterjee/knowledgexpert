@@ -4,6 +4,6 @@ Feature Request:
 {input}
 
 Notes from the Analyst:
-=================================================
+-- BEGIN Analyst Notes --
 {interactions}
-=================================================
+-- END Analyst Notes --

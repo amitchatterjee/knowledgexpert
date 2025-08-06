@@ -10,7 +10,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 from knowledgexpert.expert import Expert
-from src.knowledgexpert.structures import AnalystOutput, CodingOutput
+from knowledgexpert.structures import AnalystOutput, CodingOutput
 
 def write_file_tool(code: str, filename: str, directory: str) -> str:
     try:
