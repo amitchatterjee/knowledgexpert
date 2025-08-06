@@ -54,7 +54,6 @@ class ExpertsGraph:
         graph.set_entry_point("analyst")
         self.compiled_graph = graph.compile()
 
-
     def _replacer(self, match):
         env_var = match.group(1)
         return os.environ.get(env_var, "")
@@ -101,7 +100,7 @@ class ExpertsGraph:
         state["implementor_output"] = "I am not ready to configure yet"
         return state
 
-    def development_activities_node(self, state):
+    def development_team_node(self, state):
         parallel = RunnableParallel(
             developer=self.developer_node,
             tester=self.tester_node,
@@ -112,13 +111,13 @@ class ExpertsGraph:
         return state
 
     def request_router_node(self, state):
-        def routing_predicate(state):
+        def classification(state):
             return state["analyst_output"].classification
 
         return RunnableBranch(
-                (lambda state: routing_predicate(state) == "code-generation-request", RunnableLambda(self.development_activities_node)),
-                (lambda state: routing_predicate(state) == "test-generation-request", RunnableLambda(self.tester_node)),
-                (lambda state: routing_predicate(state) == "config-generation-request", RunnableLambda(self.implementor_node)),
+                (lambda state: classification(state) == "code-generation-request", RunnableLambda(self.development_team_node)),
+                (lambda state: classification(state) == "test-generation-request", RunnableLambda(self.tester_node)),
+                (lambda state: classification(state) == "config-generation-request", RunnableLambda(self.implementor_node)),
                 # default
                 (lambda state: state))
     

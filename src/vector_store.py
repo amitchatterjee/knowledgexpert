@@ -2,11 +2,13 @@ import ast
 import os
 import argparse
 import chromadb
+
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from knowledgexpert.chunker import create_chunks
 
 
 def split_python_code_by_function(code):
@@ -105,38 +107,7 @@ def print_chunk_info(chunk):
     for doc_chunk in chunk:
         print(f"Source: {doc_chunk.metadata.get('source', '')}")
         print(f"Metadata: {doc_chunk.metadata}")
-        print(f"Content:\n{doc_chunk.page_content}\n{'-'*60}")
-
-def create_chunks(doc_tuple, md_splitter, py_splitter, txt_splitter):
-    doc_chunks = []
-    for each in doc_tuple[0]:
-        source = each.metadata.get('source', '')
-        if source.endswith('.py'):
-            # Use PythonCodeTextSplitter for Python files
-            py_chunks = py_splitter.split_text(each.page_content)
-            for chunk in py_chunks:
-                if isinstance(chunk, str) and chunk.strip():
-                    doc_chunk = type(each)(page_content=chunk, metadata=each.metadata)
-                    doc_chunk.metadata.update({'type': 'code', 'language': 'python'})
-                    doc_chunk.metadata.update(doc_tuple[1])
-                    doc_chunks.append(doc_chunk)
-        elif source.endswith('.md'):
-            # Use MarkdownTextSplitter for markdown files
-            md_chunks = md_splitter.split_text(each.page_content)
-            for chunk in md_chunks:
-                if isinstance(chunk, str) and chunk.strip():
-                    doc_chunk = type(each)(page_content=chunk, metadata=each.metadata)
-                    doc_chunk.metadata.update(doc_tuple[1])
-                    doc_chunks.append(doc_chunk)
-        else:
-            # Use TextTokenSplitter for other text files as fallback
-            txt_chunks = txt_splitter.split_text(each.page_content)
-            for chunk in txt_chunks:
-                if isinstance(chunk, str) and chunk.strip():
-                    doc_chunk = type(each)(page_content=chunk, metadata=each.metadata)
-                    doc_chunk.metadata.update(doc_tuple[1])
-                    doc_chunks.append(doc_chunk)
-    return doc_chunks
+        print(f"Content:\n{getattr(doc_chunk, 'page_content', '')}\n{'-'*60}")
 
 if __name__ == "__main__":
     import logging

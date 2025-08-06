@@ -57,9 +57,9 @@ class Expert:
                               self.args.scoreThreshold, self.args.ensembleWeights, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         if getattr(self.args, "disableHistory", False):
-            self.chat_with_history = self.rag_chain
+            self.chat = self.rag_chain
         else:
-            self.chat_with_history = RunnableWithMessageHistory(
+            self.chat = RunnableWithMessageHistory(
                 self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")
 
     def _format_docs(self, docs):
@@ -173,7 +173,7 @@ class Expert:
                 graph_context = ""
         self.logger.debug(f"Step 2: Querying vector RAG with graph context: %s", graph_context)
         try:
-            out = self.chat_with_history.invoke({
+            out = self.chat.invoke({
                 "input": user_query, 
                 "graph_context": graph_context, 
                 "interactions": interactions}, 
