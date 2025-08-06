@@ -25,13 +25,13 @@ def split_python_code_by_function(code):
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
     parser.add_argument("--documents", nargs='+', type=str, help="List of documents to process. This arg must be in the format: dir_path;key1:val1,key2:val2,... The system will process all files of type - python and md located under the directory specified by dir_path", default=[])
-    parser.add_argument("--chunkSize", type=int, default=500, help="Chunk size for splitters (tokens)")
-    parser.add_argument("--chunkOverlap", type=int, default=50, help="Chunk overlap for splitters (tokens)")
+    parser.add_argument("--chunkSize", type=int, default=2000, help="Chunk size for splitters (tokens)")
+    parser.add_argument("--chunkOverlap", type=int, default=200, help="Chunk overlap for splitters (tokens)")
     parser.add_argument("--log", type=str, default="INFO", help="Log severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
     parser.add_argument("--collectionName", type=str, default="rules_collection", help="ChromaDB collection name")
     parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
-    parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L-6-v3", help="Embedding model name")
+    parser.add_argument("--embeddingModel", type=str, default="NV-Embed-v2", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Remote HuggingFace Inference API endpoint URL (optional)")
     parser.add_argument("--clear", action="store_true", help="Purge the collection before adding new documents")
     parser.add_argument("--print", action="store_true", help="Print each chunk's source, metadata, and content")
@@ -94,8 +94,7 @@ def main(args):
         )
         logger.info("Storing newly-found document chunks...")
         ids = []
-        batch_size = 32
-        #doc_chunks = [chunk for chunk in doc_chunks if not chunk.metadata.get('source', '').endswith('.py')]
+        batch_size = 10
         for i in range(0, len(doc_chunks), batch_size):
             batch = doc_chunks[i:i+batch_size]
             batch_ids = vector_store.add_documents(documents=batch)

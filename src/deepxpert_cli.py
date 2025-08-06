@@ -2,7 +2,7 @@ import logging
 import argparse
 import re
 
-from knowledgexpert.experts_graph import ExpertsGraph
+from knowledgexpert.deepxpert import ExpertsGraph
 from expert_cli import parse_args as default_values
 import os
 import json

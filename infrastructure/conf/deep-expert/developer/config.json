@@ -5,7 +5,7 @@
     "llmApiEndpoint": "https://api.lambda.ai/v1",
 
     "embeddingApiUrl": "http://localhost:8080",
-    "embeddingModel": "msmarco-MiniLM-L-6-v3",
+    "embeddingModel": "NV-Embed-v2",
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
@@ -25,6 +25,5 @@
     "ensembleWeights": [0.5, 0.5],
 
     "verbose": true,
-    "log": "INFO",
     "disableHistory": true
 }
