@@ -3,11 +3,10 @@ import json
 from logging import Logger
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from langgraph.graph import StateGraph, END
 from langchain_core.runnables import RunnableLambda, RunnableBranch, RunnableParallel
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field
 
 from knowledgexpert.expert import Expert
 from knowledgexpert.structures import AnalystOutput, CodingOutput
@@ -17,6 +16,7 @@ def write_file_tool(code: str, filename: str, directory: str) -> str:
         if not directory or not filename or not code:
             return "Error: Missing 'filename' or 'code' in input."
         full_path = os.path.join(directory, filename)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, "w") as f:
             f.write(code)
         return f"Successfully wrote to file: {full_path}"

@@ -4,8 +4,8 @@
     "llmModel": "openai:llama-4-scout-17b-16e-instruct",
     "llmApiEndpoint": "https://api.lambda.ai/v1",
 
-    "embeddingApiUrl": "http://localhost:8080",
-    "embeddingModel": "NV-Embed-v2",
+    "embeddingApiUrl": "http://localhost:9000",
+    "embeddingModel": "msmacro-MiniLM-L6-v3",
     
     "chromaHost": "localhost",
     "chromaPort": 8000,

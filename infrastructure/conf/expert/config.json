@@ -4,15 +4,14 @@
     "llmModel": "openai:llama-4-scout-17b-16e-instruct",
     "llmApiEndpoint": "https://api.lambda.ai/v1",
 
-    "embeddingApiUrl": "http://localhost:8080",
-    "embeddingModel": "NV-Embed-v2",
+    "embeddingApiUrl": "http://localhost:9000",
+    "embeddingModel": "msmacro-MiniLM-L6-v3",
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
     "baseCollection": "rules_collection",
 
     "format": "raw",
-    "contextPaths": [],
     
     "useGraphRag": true,
     "neo4jUri": "bolt://localhost:7687",
@@ -22,10 +21,11 @@
     "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
     "graphLlmApiEndpoint": "https://api.anthropic.com",
 
-    "searchAlgorithm": "mmr",
-    "scoreThreshold": 0.9,
-
+    "contextPaths": [],
     "ensembleWeights": [0.5, 0.5],
+
+    "searchAlgorithm": "mmr",
+    "k": 50,
 
     "verbose": true,
     "log": "INFO"

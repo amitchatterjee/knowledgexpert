@@ -135,8 +135,7 @@ class Expert:
         llm_prompt_path = os.path.join(self.prompt_dir, "vector_prompt.txt")
         with open(llm_prompt_path, "r", encoding="utf-8") as f:
             llm_prompt_text = f.read()
-        prompt = PromptTemplate(template=llm_prompt_text, input_variables=[
-                                "context", "history", "input"])
+        prompt = PromptTemplate(template=llm_prompt_text)
 
         def coding_advice_to_json(obj):
             return obj.model_dump_json()

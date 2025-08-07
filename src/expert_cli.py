@@ -46,7 +46,7 @@ def parse_args(args_list=None):
     # Vector RAG options
     parser.add_argument("--llmModel", default=None, help="LLM model (default: openai:deepseek-r1-671b)")
     parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint (default: https://api.lambda.ai/v1)")
-    parser.add_argument("--embeddingModel", default='NV-Embed-v2', help="Embedding model (default: NV-Embed-v2)")
+    parser.add_argument("--embeddingModel", default='msmacro-MiniLM-L6-v3', help="Embedding model (default: msmacro-MiniLM-L6-v3)")
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
     parser.add_argument("--baseCollection", default='rules_collection', help="Base collection name (default: rules_collection)")

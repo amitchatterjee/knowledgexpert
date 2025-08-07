@@ -21,7 +21,7 @@ services:
     image: neo4j:5.19
     container_name: neo4j
     ports:
-      - "7474:7474"   # HTTP UI
+      - "8080:7474"   # HTTP UI
       - "7687:7687"   # Bolt protocol
     environment:
       - NEO4J_AUTH=neo4j/password
@@ -34,9 +34,9 @@ services:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     container_name: huggingface-embeddings
     ports:
-      - "8080:80"
+      - "9000:80"
     environment:
-      - MODEL_ID=sentence-transformers/NV-Embed-v2
+      - MODEL_ID=sentence-transformers/msmarco-MiniLM-L6-v3
       - DEVICE=cpu
     volumes:
       - huggingface_data:/data

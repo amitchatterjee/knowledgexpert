@@ -16,6 +16,8 @@ faiss-cpu
 langchain-openai
 langchain-neo4j
 langgraph
+datasets
+einops
 
 # Temporary workaround
 httpx==0.27.2 
