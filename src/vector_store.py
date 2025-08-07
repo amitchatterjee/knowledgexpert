@@ -43,8 +43,12 @@ def parse_args():
 def main(args):
     all_docs = []
     for document_spec in args.documents:
-        dir_path, *metadata_parts = document_spec.split(';')
+        dir_path, glob_pattern, *metadata_parts = document_spec.split(';')
         metadata = {}
+        if not glob_pattern:
+            glob = ["**/*.py", "**/*.md"]
+        else:
+            glob = glob_pattern.split(',')
         if metadata_parts:
             for item in metadata_parts[0].split(','):
                 if item:
@@ -53,7 +57,7 @@ def main(args):
         logger.debug('Loading documents from: {%s} with attributes: {%s}', dir_path, metadata )
         loader = DirectoryLoader(
             dir_path,
-            glob=["**/*.py", "**/*.md"],
+            glob=glob,
             loader_cls=TextLoader,
             recursive=True
         )

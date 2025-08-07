@@ -68,9 +68,9 @@ ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'NV-Embed-v2' --collectionName 'rules_collection' --clear --store --chunkSize 1200 --chunkOverlap 240
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'NV-Embed-v2' --collectionName 'rules_collection' --clear --store --chunkSize 1200 --chunkOverlap 240
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'NV-Embed-v2' --clear --store --collectionName 'documents_collection' --chunkSize 1200 --chunkOverlap 240
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:8080" --embeddingModel 'NV-Embed-v2' --clear --store --collectionName 'documents_collection' --chunkSize 1200 --chunkOverlap 240
 
 ```
 

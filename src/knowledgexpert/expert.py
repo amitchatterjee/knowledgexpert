@@ -54,7 +54,7 @@ class Expert:
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
         self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollection, self.args.searchAlgorithm,
-                              self.args.scoreThreshold, self.args.ensembleWeights, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
+                              self.args.scoreThreshold, self.args.ensembleWeights, self.args.k, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         if getattr(self.args, "disableHistory", False):
             self.chat = self.rag_chain
@@ -65,7 +65,9 @@ class Expert:
     def _format_docs(self, docs):
         if not docs:
             return None
-        return "\n\n".join(doc.page_content for doc in docs)
+        context_str = "\n\n".join(doc.page_content for doc in docs)
+        self.logger.debug("Retriever context:\n%s", context_str)
+        return context_str
 
     def _stop_if_no_context(self, inputs):
         context = inputs["context"]
@@ -77,13 +79,19 @@ class Expert:
         file_path = os.path.join(hist_dir, f"history_{session_id}.json")
         return FileChatMessageHistory(file_path=file_path)
 
-    def _setup_vector_store(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, context_paths, embeddings):
+    def _setup_vector_stores(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, k, context_paths, embeddings):
         faiss_store = build_faiss_store_from_context(context_paths, embeddings)
         chroma_client = chromadb.HttpClient(host=chromaHost, port=chromaPort)
         vectorDb_kwargs = {}
         if searchAlgorithm == "similarity_score_threshold" and scoreThreshold is not None:
             vectorDb_kwargs["search_kwargs"] = {
-                "score_threshold": scoreThreshold}
+                "score_threshold": scoreThreshold,
+                "k": k
+            }
+        else:
+            vectorDb_kwargs["search_kwargs"] = {
+                "k": k
+            }
         vectorDb = Chroma(
             client=chroma_client, collection_name=baseCollection, embedding_function=embeddings)
         if faiss_store:
@@ -115,9 +123,11 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, contextPaths, llmModel, llmApiEndpoint, format):
-        retriever = self._setup_vector_store(chromaHost=chromaHost, chromaPort=chromaPort, baseCollection=baseCollection, searchAlgorithm=searchAlgorithm,
-                                             scoreThreshold=scoreThreshold, ensembleWeights=ensembleWeights, context_paths=contextPaths, embeddings=self.embeddings)
+    def _setup_vector_chain(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, k, contextPaths, llmModel, llmApiEndpoint, format):
+        retriever = self._setup_vector_stores(chromaHost=chromaHost, chromaPort=chromaPort, baseCollection=baseCollection, searchAlgorithm=searchAlgorithm,
+                                             scoreThreshold=scoreThreshold, ensembleWeights=ensembleWeights,
+                                             k = k, 
+                                             context_paths=contextPaths, embeddings=self.embeddings)
 
         llm = setup_llm(llmModel=llmModel,
                         llmApiEndpoint=llmApiEndpoint, output_format=format)

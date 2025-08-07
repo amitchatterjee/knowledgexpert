@@ -22,6 +22,7 @@
     "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
     "graphLlmApiEndpoint": "https://api.anthropic.com",
 
+    "k": 50,
     "ensembleWeights": [0.5, 0.5],
 
     "verbose": true,

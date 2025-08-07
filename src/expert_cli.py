@@ -52,6 +52,7 @@ def parse_args(args_list=None):
     parser.add_argument("--baseCollection", default='rules_collection', help="Base collection name (default: rules_collection)")
     parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
     parser.add_argument("--scoreThreshold", type=float, default=None, help="Score threshold for similarity_score_threshold search (optional)")
+    parser.add_argument("--k", type=int, default=10, help="Number of documents to retrieve for context (default: 10)")
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
     parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
