@@ -104,7 +104,7 @@ python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py
 ```
 
 ## Execute Knowledgexpert API
-uvicorn copilot_api:app --host 0.0.0.0 --port 9000 --app-dir "$KNOWLEDGEXPERT_HOME/src"
+uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src"
 
 ## Query the vector database
 ```bash
