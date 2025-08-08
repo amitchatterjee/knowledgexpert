@@ -1,6 +1,5 @@
 import os
 import logging
-from typing import Optional
 from rich.console import Console
 import argparse
 import importlib
@@ -46,17 +45,23 @@ def parse_args(args_list=None):
     # Vector RAG options
     parser.add_argument("--llmModel", default=None, help="LLM model (default: openai:deepseek-r1-671b)")
     parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint (default: https://api.lambda.ai/v1)")
+
+    parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
     parser.add_argument("--embeddingModel", default='msmacro-MiniLM-L6-v3', help="Embedding model (default: msmacro-MiniLM-L6-v3)")
+
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
     parser.add_argument("--baseCollection", default='rules_collection', help="Base collection name (default: rules_collection)")
     parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
     parser.add_argument("--scoreThreshold", type=float, default=None, help="Score threshold for similarity_score_threshold search (optional)")
-    parser.add_argument("--k", type=int, default=10, help="Number of documents to retrieve for context (default: 10)")
+    parser.add_argument("--k", type=int, default=None, help="Number of documents to retrieve for context (default: 10)")
+
+
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")
+
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
-    parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
-    # Graph RAG options
+    parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
+    
     parser.add_argument("--neo4jUri", type=str, default="bolt://localhost:7687", help="Neo4j connection URI.")
     parser.add_argument("--neo4jUser", type=str, default="neo4j", help="Neo4j username.")
     parser.add_argument("--neo4jPassword", type=str, default="password", help="Neo4j password.")
@@ -64,11 +69,15 @@ def parse_args(args_list=None):
     parser.add_argument("--graphLlmApiEndpoint", default=None, type=str, help="Graph LLM API endpoint.")
     parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output from gag chain.")
+
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
-    parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
+   
     parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/expert)")
+
     parser.add_argument("--disableHistory", action="store_true", help="Disable message history for the assistant (default: False)")
+
     parser.add_argument("--confDir", default=None, help="Directory containing config.json for base configuration (optional)")
+
     parser.add_argument("--structureClass", default="knowledgexpert.structures.CodingAdvice", help="Fully qualified class name for structure (default: knowledgexpert.structures.CodingAdvice)")
     if args_list is not None:
         return parser.parse_args(args_list)

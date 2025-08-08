@@ -79,30 +79,25 @@ class Expert:
         file_path = os.path.join(hist_dir, f"history_{session_id}.json")
         return FileChatMessageHistory(file_path=file_path)
 
-    def _setup_vector_stores(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, k, context_paths, embeddings):
+    def _setup_vector_stores(self, chroma_host, chroma_port, base_collection, search_algorithm, score_threshold, ensemble_weights, k, context_paths, embeddings):
         faiss_store = build_faiss_store_from_context(context_paths, embeddings)
-        chroma_client = chromadb.HttpClient(host=chromaHost, port=chromaPort)
-        vectorDb_kwargs = {}
-        if searchAlgorithm == "similarity_score_threshold" and scoreThreshold is not None:
-            vectorDb_kwargs["search_kwargs"] = {
-                "score_threshold": scoreThreshold,
-                "k": k
-            }
-        else:
-            vectorDb_kwargs["search_kwargs"] = {
-                "k": k
-            }
+        chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
+        vectorDb_kwargs = {"search_kwargs": {}}
+        if k:
+            vectorDb_kwargs["search_kwargs"]["k"] = k
+        if search_algorithm == "similarity_score_threshold" and score_threshold is not None:
+            vectorDb_kwargs["search_kwargs"]["score_threshold"] = score_threshold,
         vectorDb = Chroma(
-            client=chroma_client, collection_name=baseCollection, embedding_function=embeddings)
+            client=chroma_client, collection_name=base_collection, embedding_function=embeddings)
         if faiss_store:
             retriever = EnsembleRetriever(
                 retrievers=[vectorDb.as_retriever(
-                    search_type=searchAlgorithm, **vectorDb_kwargs), faiss_store.as_retriever()],
-                weights=ensembleWeights
+                    search_type=search_algorithm, **vectorDb_kwargs), faiss_store.as_retriever()],
+                weights=ensemble_weights
             )
         else:
             retriever = vectorDb.as_retriever(
-                search_type=searchAlgorithm, **vectorDb_kwargs)
+                search_type=search_algorithm, **vectorDb_kwargs)
         return retriever
 
     def _setup_graph_chain(self, useGraphRag, neo4jUri, neo4jUser, neo4jPassword, graphLlmModel, graphLlmApiEndpoint, verbose):
@@ -124,10 +119,18 @@ class Expert:
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
     def _setup_vector_chain(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, k, contextPaths, llmModel, llmApiEndpoint, format):
-        retriever = self._setup_vector_stores(chromaHost=chromaHost, chromaPort=chromaPort, baseCollection=baseCollection, searchAlgorithm=searchAlgorithm,
-                                             scoreThreshold=scoreThreshold, ensembleWeights=ensembleWeights,
-                                             k = k, 
-                                             context_paths=contextPaths, embeddings=self.embeddings)
+        # Setup base retriever
+        base_retriever = self._setup_vector_stores(
+            chroma_host=chromaHost,
+            chroma_port=chromaPort,
+            base_collection=baseCollection,
+            search_algorithm=searchAlgorithm,
+            score_threshold=scoreThreshold,
+            ensemble_weights=ensembleWeights,
+            k=k,
+            context_paths=contextPaths,
+            embeddings=self.embeddings
+        )
 
         llm = setup_llm(llmModel=llmModel,
                         llmApiEndpoint=llmApiEndpoint, output_format=format)
@@ -146,7 +149,7 @@ class Expert:
         params = {
             "interactions": RunnableLambda(lambda x: x["interactions"] if "interactions" in x else "None"),
             "graph_context": RunnableLambda(lambda x: x["graph_context"] if "graph_context" in x else "None"),
-            "context": RunnableLambda(lambda x: x["input"]) | retriever | self._format_docs,
+            "context": RunnableLambda(lambda x: x["input"]) | base_retriever | self._format_docs,
             "input": RunnableLambda(lambda x: x["input"]),
             "history": lambda x: x.get("history", []),
         }

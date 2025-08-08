@@ -1,5 +1,3 @@
-import ast
-import os
 import argparse
 import chromadb
 
@@ -9,20 +7,6 @@ from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from knowledgexpert.chunker import create_chunks
-
-
-def split_python_code_by_function(code):
-    """Split Python code into chunks by function and class definitions."""
-    tree = ast.parse(code)
-    chunks = []
-    lines = code.splitlines()
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-            start = node.lineno - 1
-            end = node.end_lineno
-            chunk = '\n'.join(lines[start:end])
-            chunks.append(chunk)
-    return chunks
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
@@ -72,6 +56,11 @@ def main(args):
     doc_chunks = []
     for each in all_docs:
         chunk = create_chunks(each, py_splitter=py_splitter, md_splitter=md_splitter, txt_splitter=txt_splitter)
+        # Add chunk_index to each chunk's metadata
+        for idx, doc_chunk in enumerate(chunk):
+            if not hasattr(doc_chunk, 'metadata'):
+                doc_chunk.metadata = {}
+            doc_chunk.metadata['chunk_index'] = idx
         if args.print:
             print_chunk_info(chunk)
         doc_chunks.extend(chunk)
@@ -100,7 +89,7 @@ def main(args):
         )
         logger.info("Storing newly-found document chunks...")
         ids = []
-        batch_size = 10
+        batch_size = 5
         for i in range(0, len(doc_chunks), batch_size):
             batch = doc_chunks[i:i+batch_size]
             batch_ids = vector_store.add_documents(documents=batch)

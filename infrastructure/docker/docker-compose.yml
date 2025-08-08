@@ -37,6 +37,9 @@ services:
       - "9000:80"
     environment:
       - MODEL_ID=sentence-transformers/msmarco-MiniLM-L6-v3
+      #- MODEL_ID=sentence-transformers/all-MiniLM-L12-v2-2048
+      #- MODEL_ID=FacebookAI/xlm-mlm-en-2048
+      #- MODEL_ID=Snowflake/snowflake-arctic-embed-m-v2.0
       - DEVICE=cpu
     volumes:
       - huggingface_data:/data
