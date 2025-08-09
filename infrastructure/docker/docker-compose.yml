@@ -42,9 +42,12 @@ services:
       #- MODEL_ID=FacebookAI/xlm-mlm-en-2048
       #- MODEL_ID=Snowflake/snowflake-arctic-embed-m-v2.0
       #- MODEL_ID=Qwen/Qwen3-Embedding-0.6B
-      - DEVICE=cpu
+      #- MODEL_ID=sentence-transformers/sentence-t5-xxl
+      #- MODEL_ID=/data/BAAI/bge-base_en_v1.5
+      # - DEVICE=cpu
     volumes:
       - huggingface_data:/data
+      #- ${HOME}/embedding-models:/data
     restart: unless-stopped
 
 volumes:

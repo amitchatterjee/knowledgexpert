@@ -1,7 +1,7 @@
 # Knowledgexpert README
 A companion project for Knowledgenet that helps developers build rules-based application using AI
 
-## Development environment setup
+## Development Environment Setup (One-time)
 
 ### Creating a Virtual Environment
 Create a new Python virtual environment named `ai-venv` under your home directory:
@@ -47,10 +47,7 @@ pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
 ```
 
 ## Setup the infrastructure components needed for this service
-### Bring up the docker containers.
-```bash
-docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
-```
+
 ### Setup the models, etc.
 ```bash
 docker exec -it ollama ollama pull deepseek-r1
@@ -61,15 +58,23 @@ docker exec -it ollama ollama pull codellama:latest
 docker exec -it ollama ollama run deepseek-r1
 ```
 
-### Configure model and other params
+### Install embeddings models locally (**Experimental)
+TODO
+
+### Configure parameters
 ```bash
 ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```
 
+## Bring up Servers
+This is needed to load the knowledge base and to run the experts.
+
+```bash
+docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
+```
+
 ## Build the knowledge base
-1. Clone the repositories - knowledgenet and knowledgenet-examples
-1. Set environment variables: KNOWLEDGENET_HOME and KNOWLEDGENET_EX_HOME. Add it to $HOME/.bashrc
-1. Run the following commands:
+Run the following commands:
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
@@ -109,7 +114,9 @@ python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py
 ```
 
 ## Execute Knowledgexpert API
+```bash
 uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src"
+```
 
 ## Query the vector database
 ```bash
