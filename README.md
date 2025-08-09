@@ -31,6 +31,11 @@ which python
 # Change as needed
 export KNOWLEDGEXPERT_HOME=$GIT_HOME/git/knowledgexpert
 export KNOWLEDGEXPERT_VSCODE_HOME=$GIT_HOME/git/knowledgexpert-vscode
+export HF_TOKEN=<huggingface_token>
+export ANTHROPIC_API_KEY=<anthropic_api_key>
+# If you are using lambda.ai, use the lambda.ai key
+export OPENAI_API_KEY=<openai_key>
+export EMBEDDING_MODEL=msmacro-MiniLM-L6-v3
 
 # Apply the changes immediately
 source ~/.bashrc
@@ -61,35 +66,35 @@ docker exec -it ollama ollama run deepseek-r1
 ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```
 
-## Build the knowledge ase
+## Build the knowledge base
 1. Clone the repositories - knowledgenet and knowledgenet-examples
 1. Set environment variables: KNOWLEDGENET_HOME and KNOWLEDGENET_EX_HOME. Add it to $HOME/.bashrc
 1. Run the following commands:
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3' --collectionName 'rules_collection' --clear --store --chunkSize 1200 --chunkOverlap 240
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --collectionName 'rules_collection' --clear --store --chunkSize 1200 --chunkOverlap 240
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3' --clear --store --collectionName 'documents_collection' --chunkSize 1200 --chunkOverlap 240
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store --collectionName 'documents_collection' --chunkSize 1200 --chunkOverlap 240
 
 ```
 
 ## Execute Knowledgexpert cli
 ```bash
 # Use anthropic claude as the graph llm and deepseek (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3'  --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:deepseek-llama3.3-70b' --useGraphRag --graphLlmApiEndpoint 'https://api.anthropic.com'  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL"  --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:deepseek-llama3.3-70b' --useGraphRag --graphLlmApiEndpoint 'https://api.anthropic.com'  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Use anthropic claude as the graph llm and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Use codellama as the graph llm (running on ollama) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
 
 # Use llama as the graph llm (running on lambda.ai) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3' --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
 
 # Use anthropic claude as the graph llm and the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3' --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Load command line params from a config file:
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/deep-expert/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
@@ -108,7 +113,7 @@ uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HO
 
 ## Query the vector database
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel 'msmacro-MiniLM-L6-v3'
+python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL"
 ```
 ## List the available models in lamba.ai
 ```bash

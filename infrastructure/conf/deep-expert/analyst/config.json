@@ -5,7 +5,7 @@
     "llmApiEndpoint": "https://api.lambda.ai/v1",
 
     "embeddingApiUrl": "http://localhost:9000",
-    "embeddingModel": "msmacro-MiniLM-L6-v3",
+    "embeddingModel": "${EMBEDDING_MODEL}",
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
