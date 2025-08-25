@@ -9,7 +9,7 @@
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
-    "baseCollection": "rules_collection",
+    "baseCollections": ["all_collection"],
 
     "format": "structured",
     "contextPaths": [],

@@ -37,14 +37,12 @@ services:
       - "9000:80"
     environment:
       - HF_TOKEN=${HF_TOKEN}
+      - DEVICE=cpu
       - MODEL_ID=${EMBEDDING_MODEL:-sentence-transformers/msmarco-MiniLM-L6-v3}
       #- MODEL_ID=sentence-transformers/all-MiniLM-L12-v2-2048
-      #- MODEL_ID=FacebookAI/xlm-mlm-en-2048
-      #- MODEL_ID=Snowflake/snowflake-arctic-embed-m-v2.0
       #- MODEL_ID=Qwen/Qwen3-Embedding-0.6B
-      #- MODEL_ID=sentence-transformers/sentence-t5-xxl
-      #- MODEL_ID=/data/BAAI/bge-base_en_v1.5
-      # - DEVICE=cpu
+      #- MODEL_ID=BAAI/bge-base-en-v1.5
+      #- MODEL_ID=BAAI/bge-m3
     volumes:
       - huggingface_data:/data
       #- ${HOME}/embedding-models:/data

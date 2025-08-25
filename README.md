@@ -35,8 +35,8 @@ export HF_TOKEN=<huggingface_token>
 export ANTHROPIC_API_KEY=<anthropic_api_key>
 # If you are using lambda.ai, use the lambda.ai key
 export OPENAI_API_KEY=<openai_key>
-export EMBEDDING_MODEL=msmacro-MiniLM-L6-v3
-
+#export EMBEDDING_MODEL=msmacro-MiniLM-L6-v3
+export EMBEDDING_MODEL=BAAI/bge-m3
 # Apply the changes immediately
 source ~/.bashrc
 ```
@@ -78,9 +78,9 @@ Run the following commands:
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --collectionName 'rules_collection' --clear --store --chunkSize 1200 --chunkOverlap 240
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store --collectionName 'documents_collection' --chunkSize 1200 --chunkOverlap 240
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store --collectionName 'analyst_collection' --chunkSize 4800 --chunkOverlap 720
 
 ```
 

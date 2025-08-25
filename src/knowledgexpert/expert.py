@@ -53,8 +53,8 @@ class Expert:
         self.graph_chain = self._setup_graph_chain(
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
-        self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollection, self.args.searchAlgorithm,
-                              self.args.scoreThreshold, self.args.ensembleWeights, self.args.k, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
+        self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.searchAlgorithm,
+                    self.args.scoreThreshold, self.args.ensembleWeights, self.args.k, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         if getattr(self.args, "disableHistory", False):
             self.chat = self.rag_chain
@@ -79,26 +79,41 @@ class Expert:
         file_path = os.path.join(hist_dir, f"history_{session_id}.json")
         return FileChatMessageHistory(file_path=file_path)
 
-    def _setup_vector_stores(self, chroma_host, chroma_port, base_collection, search_algorithm, score_threshold, ensemble_weights, k, context_paths, embeddings):
+    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, search_algorithm, score_threshold, ensemble_weights, k, context_paths, embeddings):
         faiss_store = build_faiss_store_from_context(context_paths, embeddings)
         chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
-        vectorDb_kwargs = {"search_kwargs": {}}
-        if k:
-            vectorDb_kwargs["search_kwargs"]["k"] = k
-        if search_algorithm == "similarity_score_threshold" and score_threshold is not None:
-            vectorDb_kwargs["search_kwargs"]["score_threshold"] = score_threshold,
-        vectorDb = Chroma(
-            client=chroma_client, collection_name=base_collection, embedding_function=embeddings)
+        retrievers = []
+        weights = []
+        if not isinstance(base_collections, list):
+            base_collections = [base_collections]
+        # Setup a retriever for each collection
+        for i, collection_name in enumerate(base_collections):
+            vectorDb_kwargs = {"search_kwargs": {}}
+            if k:
+                vectorDb_kwargs["search_kwargs"]["k"] = k
+            if search_algorithm == "similarity_score_threshold" and score_threshold is not None:
+                vectorDb_kwargs["search_kwargs"]["score_threshold"] = score_threshold
+            vectorDb = Chroma(
+                client=chroma_client, collection_name=collection_name, embedding_function=embeddings)
+            retrievers.append(vectorDb.as_retriever(search_type=search_algorithm, **vectorDb_kwargs))
+            # Use ensemble_weights[i] if available, else default to 1.0
+            if ensemble_weights and i < len(ensemble_weights):
+                weights.append(ensemble_weights[i])
+            else:
+                weights.append(1.0)
+        # Optionally add faiss_store as another retriever
         if faiss_store:
-            retriever = EnsembleRetriever(
-                retrievers=[vectorDb.as_retriever(
-                    search_type=search_algorithm, **vectorDb_kwargs), faiss_store.as_retriever()],
-                weights=ensemble_weights
-            )
-        else:
-            retriever = vectorDb.as_retriever(
-                search_type=search_algorithm, **vectorDb_kwargs)
-        return retriever
+            retrievers.append(faiss_store.as_retriever())
+            # If ensemble_weights has an extra value, use it, else default to 1.0
+            if ensemble_weights and len(ensemble_weights) > len(base_collections):
+                weights.append(ensemble_weights[len(base_collections)])
+            else:
+                weights.append(1.0)
+        # If only one retriever, return it directly
+        if len(retrievers) == 1:
+            return retrievers[0]
+        # Otherwise, return an ensemble retriever
+        return EnsembleRetriever(retrievers=retrievers, weights=weights)
 
     def _setup_graph_chain(self, useGraphRag, neo4jUri, neo4jUser, neo4jPassword, graphLlmModel, graphLlmApiEndpoint, verbose):
         if not useGraphRag:
@@ -118,12 +133,12 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, chromaHost, chromaPort, baseCollection, searchAlgorithm, scoreThreshold, ensembleWeights, k, contextPaths, llmModel, llmApiEndpoint, format):
+    def _setup_vector_chain(self, chromaHost, chromaPort, baseCollections, searchAlgorithm, scoreThreshold, ensembleWeights, k, contextPaths, llmModel, llmApiEndpoint, format):
         # Setup base retriever
         base_retriever = self._setup_vector_stores(
             chroma_host=chromaHost,
             chroma_port=chromaPort,
-            base_collection=baseCollection,
+            base_collections=baseCollections,
             search_algorithm=searchAlgorithm,
             score_threshold=scoreThreshold,
             ensemble_weights=ensembleWeights,

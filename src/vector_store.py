@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument("--chunkSize", type=int, default=2000, help="Chunk size for splitters (tokens)")
     parser.add_argument("--chunkOverlap", type=int, default=200, help="Chunk overlap for splitters (tokens)")
     parser.add_argument("--log", type=str, default="INFO", help="Log severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
-    parser.add_argument("--collectionName", type=str, default="rules_collection", help="ChromaDB collection name")
+    parser.add_argument("--collectionName", type=str, default="all_collection", help="ChromaDB collection name")
     parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
     parser.add_argument("--embeddingModel", type=str, default="msmacro-MiniLM-L6-v3", help="Embedding model name")
