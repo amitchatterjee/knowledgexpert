@@ -35,7 +35,7 @@ export HF_TOKEN=<huggingface_token>
 export ANTHROPIC_API_KEY=<anthropic_api_key>
 # If you are using lambda.ai, use the lambda.ai key
 export OPENAI_API_KEY=<openai_key>
-#export EMBEDDING_MODEL=msmacro-MiniLM-L6-v3
+#export EMBEDDING_MODEL=msmarco-MiniLM-L6-v3
 export EMBEDDING_MODEL=BAAI/bge-m3
 # Apply the changes immediately
 source ~/.bashrc

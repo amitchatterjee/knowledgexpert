@@ -9,7 +9,7 @@ def parse_args():
     parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
     parser.add_argument("--collectionName", type=str, default="all_collection", help="ChromaDB collection name")
-    parser.add_argument("--embeddingModel", type=str, default="msmacro-MiniLM-L6-v3", help="Embedding model name")
+    parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L6-v3", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Remote HuggingFace Inference API endpoint URL (optional)")
     parser.add_argument("--k", type=int, default=100, help="Number of nearest neighbors to retrieve")
     parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Search algorithm to use (e.g., 'similarity', 'mmr', etc.)")

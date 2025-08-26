@@ -47,7 +47,7 @@ def parse_args(args_list=None):
     parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint (default: https://api.lambda.ai/v1)")
 
     parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
-    parser.add_argument("--embeddingModel", default='msmacro-MiniLM-L6-v3', help="Embedding model (default: msmacro-MiniLM-L6-v3)")
+    parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L6-v3', help="Embedding model (default: msmarco-MiniLM-L6-v3)")
 
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
-    logger.info("Initializing Knowledge Expert using parameters: %s", args)
+    logger.info("Initializing Knowledgexpert using parameters: %s", args)
 
     module_name, class_name = structure_class_path.rsplit('.', 1)
     structure_module = importlib.import_module(module_name)
