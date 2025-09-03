@@ -1,8 +1,10 @@
 import ast
 import os
+import re
 import argparse
 from collections import defaultdict
 from neo4j import GraphDatabase
+from neo4j.exceptions import Neo4jError
 
 def extract_module_info(source_code):
     """
@@ -117,45 +119,61 @@ def build_graph(module_info_by_module):
                 graph['call_hierarchy'][(mod, func)].add((mod, callee))
     return graph
 
-def store_graph_in_neo4j(graph, uri, user, password):
+def create_graph_in_session(session, graph):
+    modules = set([mod for (mod, _) in graph['attributes'].keys()] + [mod for (mod, _) in graph['call_hierarchy'].keys()])
+    for mod in modules:
+        session.run("MERGE (m:Module {name: $mod}) SET m.description = $desc", mod=mod, desc="This node represents a Python module.")
+    # Classes and attributes
+    all_class_nodes = set(graph['attributes'].keys())  # (mod, cls)
+    class_name_to_mods = defaultdict(list)
+    fq_class_name_to_mods = defaultdict(list)
+    for mod, cls in all_class_nodes:
+        class_name_to_mods[cls].append(mod)
+        fq_class_name_to_mods[f"{mod}.{cls}"].append(mod)
+    attr_types = graph.get('attr_types', {})
+    for (mod, cls), attrs in graph['attributes'].items():
+        session.run("MERGE (c:Class {name: $cls, module: $mod}) SET c.description = $desc", cls=cls, mod=mod, desc="This node represents a Python class.")
+        for attr in attrs:
+            session.run("MERGE (a:Attribute {name: $attr}) SET a.description = $desc MERGE (c:Class {name: $cls, module: $mod}) MERGE (c)-[:contains_object]->(a)", attr=attr, cls=cls, mod=mod, desc="This node represents a Python attribute of a class.")
+    # Type hierarchy
+    for (mod, cls), bases in graph['type_hierarchy'].items():
+        for base in bases:
+            session.run(
+                "MERGE (c1:Class {name: $cls}) MERGE (c2:Class {name: $base}) MERGE (c1)-[r:inherits_from]->(c2) SET r.description = $desc",
+                cls=cls, base=base, desc="This relationship represents class inheritance."
+            )
+    # Functions and calls
+    for (mod, func), callees in graph['call_hierarchy'].items():
+        session.run("MERGE (f:Function {name: $func}) SET f.description = $desc MERGE (m:Module {name: $mod}) MERGE (m)-[r:contains_function]->(f) SET r.description = $rel_desc", func=func, mod=mod, desc="This node represents a Python function.", rel_desc="This relationship represents that a module contains a function.")
+        for (callee_mod, callee_func) in callees:
+            session.run("MERGE (f1:Function {name: $func}) MERGE (f2:Function {name: $callee_func}) MERGE (f1)-[r:calls]->(f2) SET r.description = $desc", func=func, callee_func=callee_func, desc="This relationship represents a function call.")
+
+def store_graph_in_neo4j(graph, uri, user, password, dbname):
     driver = GraphDatabase.driver(uri, auth=(user, password))
-    with driver.session() as session:
-        # Create module nodes
-        modules = set([mod for (mod, _) in graph['attributes'].keys()] + [mod for (mod, _) in graph['call_hierarchy'].keys()])
-        for mod in modules:
-            session.run("MERGE (m:Module {name: $mod}) SET m.description = $desc", mod=mod, desc="This node represents a Python module.")
-        # Classes and attributes
-        # Gather all (module, class) pairs for lookup
-        all_class_nodes = set(graph['attributes'].keys())  # (mod, cls)
-        class_name_to_mods = defaultdict(list)
-        fq_class_name_to_mods = defaultdict(list)
-        for mod, cls in all_class_nodes:
-            class_name_to_mods[cls].append(mod)
-            fq_class_name_to_mods[f"{mod}.{cls}"].append(mod)
-        attr_types = graph.get('attr_types', {})
-        for (mod, cls), attrs in graph['attributes'].items():
-            session.run("MERGE (c:Class {name: $cls, module: $mod}) SET c.description = $desc", cls=cls, mod=mod, desc="This node represents a Python class.")
-            for attr in attrs:
-                session.run("MERGE (a:Attribute {name: $attr}) SET a.description = $desc MERGE (c:Class {name: $cls, module: $mod}) MERGE (c)-[:contains_object]->(a)", attr=attr, cls=cls, mod=mod, desc="This node represents a Python attribute of a class.")
-        # Type hierarchy
-        for (mod, cls), bases in graph['type_hierarchy'].items():
-            for base in bases:
-                session.run(
-                    "MERGE (c1:Class {name: $cls}) MERGE (c2:Class {name: $base}) MERGE (c1)-[r:inherits_from]->(c2) SET r.description = $desc",
-                    cls=cls, base=base, desc="This relationship represents class inheritance."
-                )
-        # Functions and calls
-        for (mod, func), callees in graph['call_hierarchy'].items():
-            session.run("MERGE (f:Function {name: $func}) SET f.description = $desc MERGE (m:Module {name: $mod}) MERGE (m)-[r:contains_function]->(f) SET r.description = $rel_desc", func=func, mod=mod, desc="This node represents a Python function.", rel_desc="This relationship represents that a module contains a function.")
-            for (callee_mod, callee_func) in callees:
-                session.run("MERGE (f1:Function {name: $func}) MERGE (f2:Function {name: $callee_func}) MERGE (f1)-[r:calls]->(f2) SET r.description = $desc", func=func, callee_func=callee_func, desc="This relationship represents a function call.")
+
+    try:
+        with driver.session(database=dbname) as session:
+            create_graph_in_session(session, graph)
+    except Neo4jError:
+        # TODO: Upgrade the Neo4j Python driver to use DatabaseNotFoundError instead
+        # Create the database if it does not exist
+        with driver.session(database='system') as sys_session:
+            sys_session.run(f"CREATE DATABASE {dbname}")
+        # Try again
+        with driver.session(database=dbname) as session:
+            create_graph_in_session(session, graph)
     driver.close()
 
-def clear_neo4j_database(uri, user, password):
+def clear_neo4j_database(uri, user, password, dbname):
     driver = GraphDatabase.driver(uri, auth=(user, password))
-    with driver.session() as session:
-        session.run("MATCH (n) DETACH DELETE n")
-    driver.close()
+    try:
+        with driver.session(database=dbname) as session:
+            session.run("MATCH (n) DETACH DELETE n")
+    except Neo4jError as e:
+       print(f"Ignoring exception while cleaning database: {dbname}")
+       pass
+    finally:
+        driver.close()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Build and optionally store a Python module graph in Neo4j.")
@@ -164,6 +182,7 @@ def parse_args():
     parser.add_argument("--neo4jUri", type=str, default="bolt://localhost:7687", help="Neo4j connection URI.")
     parser.add_argument("--neo4jUser", type=str, default="neo4j", help="Neo4j username.")
     parser.add_argument("--neo4jPassword", type=str, default="password", help="Neo4j password.")
+    parser.add_argument("--neo4jDatabase", type=str, default="neo4j", help="Neo4j database name (default: neo4j). The community edition only supports the default database")
     parser.add_argument("--store", action="store_true", help="Store the graph in Neo4j.")
     parser.add_argument("--print", action="store_true", help="Print the graph to stdout.")
     parser.add_argument("--clear", action="store_true", help="Clear the Neo4j database before storing the graph.")
@@ -190,13 +209,19 @@ def main():
     logging.basicConfig(
         level=getattr(logging, args.log.upper(), logging.INFO),
         format='%(asctime)s %(levelname)s %(name)s: %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+        datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger("graph_store")
     logger.info("Building Python module graph...")
     module_info_by_module = {}  # mod -> {'classes': ..., 'functions': ...}
     for package_dir in args.srcDirs:
-        for root, _, files in os.walk(package_dir):
+        include_pattern = None
+        if ':' in package_dir:
+            package_dir, dir_regex = package_dir.split(':', 1)
+            include_pattern = re.compile(dir_regex)
+            print(package_dir, '**', dir_regex)
+
+        for root, dirs, files in os.walk(package_dir):
+            dirs[:] = [d for d in dirs if include_pattern.match(d)] if include_pattern else []
             for file in files:
                 if file.endswith(".py"):
                     file_path = os.path.join(root, file)
@@ -217,14 +242,15 @@ def main():
     if args.print:
         print_graph(graph)
     if args.clear and args.store:
-        clear_neo4j_database(args.neo4jUri, args.neo4jUser, args.neo4jPassword)
+        clear_neo4j_database(args.neo4jUri, args.neo4jUser, args.neo4jPassword, args.neo4jDatabase)
     if args.store:
         logger.info("Storing graph in Neo4j...")
         store_graph_in_neo4j(
             graph,
             uri=args.neo4jUri,
             user=args.neo4jUser,
-            password=args.neo4jPassword
+            password=args.neo4jPassword,
+            dbname=args.neo4jDatabase
         )
 
 if __name__ == "__main__":

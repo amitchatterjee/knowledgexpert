@@ -51,7 +51,7 @@ class Expert:
             self.args.embeddingModel, self.args.embeddingApiUrl)
 
         self.graph_chain = self._setup_graph_chain(
-            self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
+            self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
         self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.searchAlgorithm,
                     self.args.scoreThreshold, self.args.ensembleWeights, self.args.k, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
@@ -115,21 +115,16 @@ class Expert:
         # Otherwise, return an ensemble retriever
         return EnsembleRetriever(retrievers=retrievers, weights=weights)
 
-    def _setup_graph_chain(self, useGraphRag, neo4jUri, neo4jUser, neo4jPassword, graphLlmModel, graphLlmApiEndpoint, verbose):
+    def _setup_graph_chain(self, useGraphRag, neo4jUri, neo4jUser, neo4jPassword, neo4jDatabase, graphLlmModel, graphLlmApiEndpoint, verbose):
         if not useGraphRag:
             return None
-
-        graph = Neo4jGraph(url=neo4jUri, username=neo4jUser,
-                           password=neo4jPassword)
+        graph = Neo4jGraph(url=neo4jUri, username=neo4jUser, password=neo4jPassword, database=neo4jDatabase)
         graph_prompt_path = os.path.join(self.prompt_dir, "graph_prompt.txt")
         with open(graph_prompt_path, "r", encoding="utf-8") as f:
             system_prompt_text = f.read()
-
-        system_prompt = SystemMessagePromptTemplate.from_template(
-            system_prompt_text)
+        system_prompt = SystemMessagePromptTemplate.from_template(system_prompt_text)
         human_prompt = HumanMessagePromptTemplate.from_template("{query}")
-        chat_prompt = ChatPromptTemplate.from_messages(
-            [system_prompt, human_prompt])
+        chat_prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 

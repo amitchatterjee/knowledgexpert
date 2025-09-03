@@ -60,11 +60,12 @@ def parse_args(args_list=None):
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")
 
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
-    parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[0.5, 0.5], help="Weights for ensemble retriever (default: 0.5 0.5)")
+    parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[], help="Weights for ensemble retriever (default: [])")
     
     parser.add_argument("--neo4jUri", type=str, default="bolt://localhost:7687", help="Neo4j connection URI.")
     parser.add_argument("--neo4jUser", type=str, default="neo4j", help="Neo4j username.")
     parser.add_argument("--neo4jPassword", type=str, default="password", help="Neo4j password.")
+    parser.add_argument("--neo4jDatabase", type=str, default="neo4j", help="Neo4j database name (default: neo4j)")
     parser.add_argument("--graphLlmModel", default=None, type=str, help="Graph LLM model (langchain convention).")
     parser.add_argument("--graphLlmApiEndpoint", default=None, type=str, help="Graph LLM API endpoint.")
     parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")

@@ -76,12 +76,36 @@ docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compos
 ## Build the knowledge base
 Run the following commands:
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs $KNOWLEDGENET_HOME/src $KNOWLEDGENET_EX_HOME/autoins/src --clear --store
+python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs \
+    "$KNOWLEDGENET_HOME/src:knowledgenet" \
+    "$KNOWLEDGENET_EX_HOME/autoins/src:autoins*" \
+    --neo4jDatabase neo4j \
+    --clear --store
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+    "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" \
+    "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
+    "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
+    "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" \
+    "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
+    --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store --collectionName 'analyst_collection' --chunkSize 4800 --chunkOverlap 720
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+    "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
+    "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store \
+    --collectionName 'analyst_collection' --chunkSize 4800 --chunkOverlap 720
 
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+    "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
+    --collectionName 'rules_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+    "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store \
+    --collectionName 'app_docs_collection' --chunkSize 4800 --chunkOverlap 720
 ```
 
 ## Execute Knowledgexpert cli

@@ -9,7 +9,7 @@
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
-    "baseCollections": ["analyst_collection"],
+    "baseCollections": ["rules_collection", "app_docs_collection"],
 
     "searchAlgorithm": "mmr",
 
