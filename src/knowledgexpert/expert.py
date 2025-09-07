@@ -168,6 +168,7 @@ class Expert:
             rag_chain = (
                 params
                 | RunnableLambda(self._stop_if_no_context)
+                | RunnableLambda(lambda x: (self.log_prompt(x), x)[1])
                 | (prompt | structured_llm)
                 | RunnableLambda(coding_advice_to_json)
             )
@@ -178,6 +179,11 @@ class Expert:
                 | (prompt | llm | StrOutputParser())
             )
         return rag_chain
+
+    def log_prompt(self, x):
+        if self.args.verbose:
+            self.logger.info("Input for vector llm: %s", x)
+        return None
 
     def handle_question(self, user_query, name, interactions=''):
         graph_context = ""

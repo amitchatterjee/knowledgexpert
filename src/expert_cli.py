@@ -69,7 +69,7 @@ def parse_args(args_list=None):
     parser.add_argument("--graphLlmModel", default=None, type=str, help="Graph LLM model (langchain convention).")
     parser.add_argument("--graphLlmApiEndpoint", default=None, type=str, help="Graph LLM API endpoint.")
     parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output from gag chain.")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output from rag chain.")
 
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
    

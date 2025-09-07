@@ -5,26 +5,22 @@ Read the original requirements and notes from the analyst to identify the nature
 Include the necessary imports when generating code. 
 Generate the code for this request but don't generate tests or example code to demonstrate how the code works. Add references to any documentation that you used from te contextual information. Specify a list of file names or URLs that you referenced to come up with the code.
 
-
+<entity-relationships>
 Entity Relationships:
--- BEGIN Entity Relationships --
 {graph_context}
--- END Entity Relationships --
+</entity-relationships>
 
-
+<contextual-information>
 Contextual Information:
--- BEGIN Contextual Information --
 {context}
--- END Contextual Information --
+</contextual-information>
 
-
+<analyst-notes>
 Notes from the Analyst:
--- BEGIN Analyst Notes --
 {interactions}
--- END Analyst Notes --
+</analyst-notes>
 
-
+<original-requirements>
 Original Requirements:
--- BEGIN Original Requirements --
 {input}
--- END Original Requirements --
+</original-requirements>

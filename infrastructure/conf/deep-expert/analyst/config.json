@@ -1,8 +1,8 @@
 {
     "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/analyst",
 
-    "llmModel": "openai:llama-4-scout-17b-16e-instruct",
-    "llmApiEndpoint": "https://api.lambda.ai/v1",
+    "llmModel": "anthropic:claude-sonnet-4-20250514",
+    "llmApiEndpoint": "https://api.anthropic.com",
 
     "embeddingApiUrl": "http://localhost:9000",
     "embeddingModel": "${EMBEDDING_MODEL}",
@@ -10,15 +10,14 @@
     "chromaHost": "localhost",
     "chromaPort": 8000,
     "baseCollections": ["rules_collection", "app_docs_collection"],
-
+    "ensembleWeights": [0.5, 0.5],
     "searchAlgorithm": "mmr",
 
     "format": "structured",
+
     "contextPaths": [],
     
     "useGraphRag": false,
-
-    "ensembleWeights": [0.5, 0.5],
 
     "verbose": true,
     "disableHistory": true
