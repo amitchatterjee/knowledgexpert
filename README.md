@@ -33,7 +33,6 @@ export KNOWLEDGEXPERT_HOME=$GIT_HOME/git/knowledgexpert
 export KNOWLEDGEXPERT_VSCODE_HOME=$GIT_HOME/git/knowledgexpert-vscode
 export HF_TOKEN=<huggingface_token>
 export ANTHROPIC_API_KEY=<anthropic_api_key>
-# If you are using lambda.ai, use the lambda.ai key
 export OPENAI_API_KEY=<openai_key>
 #export EMBEDDING_MODEL=msmarco-MiniLM-L6-v3
 export EMBEDDING_MODEL=BAAI/bge-m3
@@ -110,20 +109,15 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
 
 ## Execute Knowledgexpert cli
 ```bash
-# Use anthropic claude as the graph llm and deepseek (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL"  --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:deepseek-llama3.3-70b' --useGraphRag --graphLlmApiEndpoint 'https://api.anthropic.com'  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
-
-# Use anthropic claude as the graph llm and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint https://api.anthropic.com  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
-
-# Use codellama as the graph llm (running on ollama) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
-
-# Use llama as the graph llm (running on lambda.ai) and llama (running on lambda.ai) as the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint 'https://api.lambda.ai/v1' --llmModel 'openai:llama-4-scout-17b-16e-instruct' --useGraphRag --graphLlmApiEndpoint 'https://api.lambda.ai/v1'  --graphLlmModel 'openai:llama-4-scout-17b-16e-instruct'
+# Use codellama as the graph llm and gemma as general llm running on ollama. There is no cost to use it but it is slooooow.
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest" --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
 
 # Use anthropic claude as the graph llm and the general llm
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+
+# Use anthropic claude as the graph llm and gpt4.1-mini as general llm
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com" --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+
 
 # Load command line params from a config file:
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/deep-expert/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
@@ -146,7 +140,9 @@ uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HO
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL"
 ```
-## List the available models in lamba.ai
+## List the available models
 ```bash
-curl -s https://api.lambda.ai/v1/models | jq 
+# Openai
+curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" | jq
+
 ```

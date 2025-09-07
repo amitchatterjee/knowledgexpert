@@ -19,6 +19,6 @@
     
     "useGraphRag": false,
 
-    "verbose": true,
+    "verbose": false,
     "disableHistory": true
 }

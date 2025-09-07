@@ -54,7 +54,6 @@ def is_text_file(filepath, blocksize=512):
             return float(len(nontext)) / len(chunk) < 0.30
     except Exception:
         return False
-from langchain.chat_models.base import init_chat_model
 
 def setup_llm(llmModel, llmApiEndpoint, output_format):
     model_provider = llmModel.split(":")[0]
@@ -65,14 +64,14 @@ def setup_llm(llmModel, llmApiEndpoint, output_format):
             temperature=0,
             streaming=True,
             model_kwargs={"response_format": {"type": "json_object"}
-                          } if output_format == "structured" else {}
+                          } if output_format == "structured" else {},
         )
     else:
         return init_chat_model(
             llmModel,
             base_url=llmApiEndpoint,
             temperature=0,
-            streaming=True
+            streaming=True,
         )
 
 def setup_embeddings(embeddingModel, embeddingApiUrl):

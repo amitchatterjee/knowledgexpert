@@ -44,7 +44,7 @@ def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="KnowledgeNet Code & Graph Assistant")
     # Vector RAG options
     parser.add_argument("--llmModel", default=None, help="LLM model (default: openai:deepseek-r1-671b)")
-    parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint (default: https://api.lambda.ai/v1)")
+    parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint")
 
     parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
     parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L6-v3', help="Embedding model (default: msmarco-MiniLM-L6-v3)")

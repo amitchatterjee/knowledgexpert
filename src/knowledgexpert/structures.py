@@ -8,7 +8,7 @@ class AnalystOutput(BaseModel):
     configGenRequirements: str
     testGenRequirements: str
     analysis: str
-    references: Optional[list]
+    references: Optional[list[str]]
 
     def __str__(self):
         fields = []
@@ -25,7 +25,7 @@ class CodingOutput(BaseModel):
     filename: str = Field(description="Python file name")
     explanation: Optional[str] = Field(
         description="Detailed explanation of the code")
-    references: Optional[list] = Field(
+    references: Optional[list[str]] = Field(
         description="A list of URLs containing more information")
     
     def __str__(self):
@@ -42,7 +42,7 @@ class CodingAdvice(BaseModel):
     code: str = Field(description="A Python Code Snippet")
     explanation: Optional[str] = Field(
         description="Detailed explanation of the code")
-    references: Optional[list] = Field(
+    references: Optional[list[str]] = Field(
         description="A list of URLs containing more information")
 
     def __str__(self):

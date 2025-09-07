@@ -1,8 +1,8 @@
 {
     "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/developer",
 
-    "llmModel": "openai:llama-4-scout-17b-16e-instruct",
-    "llmApiEndpoint": "https://api.lambda.ai/v1",
+    "llmModel": "gpt-4.1-mini",
+    "llmApiEndpoint": "https://api.openai.com/v1",
 
     "embeddingApiUrl": "http://localhost:9000",
     "embeddingModel": "${EMBEDDING_MODEL}",
@@ -22,9 +22,8 @@
     "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
     "graphLlmApiEndpoint": "https://api.anthropic.com",
 
-    "k": 50,
     "ensembleWeights": [0.5, 0.5],
 
-    "verbose": true,
+    "verbose": false,
     "disableHistory": true
 }
