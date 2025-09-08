@@ -96,6 +96,12 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store \
     --collectionName 'analyst_collection' --chunkSize 4800 --chunkOverlap 720
 
+#########################
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+    "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;entities.py,util.py;class:code,subclass:application,category:application" \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
+    --collectionName 'app_platform_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
@@ -132,7 +138,11 @@ python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/inf
 ## Execute Deepxpert CLI
 ```bash
 
-python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py 
+# Interactive
+python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py
+
+
+python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/request/underage_rule_request.txt
 
 ```
 

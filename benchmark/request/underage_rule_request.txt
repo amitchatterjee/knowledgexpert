@@ -1,0 +1,1 @@
+Create a rule that denies claims to drivers below the allowed minimum age.The driver attributes are specified by the class: Driver. The attribute - dob, represents a date of birth and it must be used to compute the age of the driver.  Read the minimum age from the ruleset_context fact as a configuration parameter.

@@ -9,20 +9,19 @@
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
-    "baseCollections": ["all_collection"],
+    "baseCollections": ["app_platform_collection", "rules_collection"],
+    "ensembleWeights": [0.25, 0.75],
 
     "format": "structured",
     "contextPaths": [],
     
-    "useGraphRag": true,
+    "useGraphRag": false,
     "neo4jUri": "bolt://localhost:7687",
     "neo4jUser": "neo4j",
     "neo4jPassword": "password",
 
     "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
     "graphLlmApiEndpoint": "https://api.anthropic.com",
-
-    "ensembleWeights": [0.5, 0.5],
 
     "verbose": false,
     "disableHistory": true
