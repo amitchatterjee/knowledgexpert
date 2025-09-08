@@ -51,10 +51,10 @@ def parse_args(args_list=None):
 
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
-    parser.add_argument("--baseCollections", nargs='+', default=['all_collection'], help="Base collection names (default: all_collection). Accepts one or more values.")
-    parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
-    parser.add_argument("--scoreThreshold", type=float, default=None, help="Score threshold for similarity_score_threshold search (optional)")
-    parser.add_argument("--k", type=int, default=None, help="Number of documents to retrieve for context (default: 10)")
+    parser.add_argument("--baseCollections", nargs='+', default=['all_collection'], help='Base collection names (default: all_collection). Accepts one or more values. Each value is of the format: <collection_name>[:][search_algorithm][:][k][:][score_threshold]')
+    parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Default search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
+    parser.add_argument("--scoreThreshold", type=float, default=None, help="Default score threshold for similarity_score_threshold search (optional)")
+    parser.add_argument("--k", type=int, default=None, help="Default k (nearest neighbor) value")
 
 
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")

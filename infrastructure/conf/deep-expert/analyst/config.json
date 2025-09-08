@@ -9,9 +9,9 @@
     
     "chromaHost": "localhost",
     "chromaPort": 8000,
-    "baseCollections": ["rules_collection", "app_docs_collection"],
-    "ensembleWeights": [0.5, 0.5],
-    "searchAlgorithm": "mmr",
+    "baseCollections": ["rules_collection:similarity:3", "app_docs_collection:mmr:10", "framework_docs_collection:mmr:3"],
+    "ensembleWeights": [0.1, 0.8, 0.1],
+    "searchAlgorithm": "similarity",
 
     "format": "structured",
 

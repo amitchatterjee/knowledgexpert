@@ -14,7 +14,7 @@
     "format": "structured",
     "contextPaths": [],
     
-    "useGraphRag": false,
+    "useGraphRag": true,
     "neo4jUri": "bolt://localhost:7687",
     "neo4jUser": "neo4j",
     "neo4jPassword": "password",

@@ -86,16 +86,22 @@ class Expert:
         weights = []
         if not isinstance(base_collections, list):
             base_collections = [base_collections]
-        # Setup a retriever for each collection
-        for i, collection_name in enumerate(base_collections):
+        # Tokenize each collection_name using ':' and extract parameters
+        for i, collection_str in enumerate(base_collections):
+            # TODO - add embeddings to this mix
+            tokens = collection_str.split(':')
+            collection_name = tokens[0]
+            search_alg = tokens[1] if len(tokens) > 1 and tokens[1] else search_algorithm
+            k_val = int(tokens[2]) if len(tokens) > 2 and tokens[2] else k
+            score_thresh = float(tokens[3]) if len(tokens) > 3 and tokens[3] else score_threshold
             vectorDb_kwargs = {"search_kwargs": {}}
-            if k:
-                vectorDb_kwargs["search_kwargs"]["k"] = k
-            if search_algorithm == "similarity_score_threshold" and score_threshold is not None:
-                vectorDb_kwargs["search_kwargs"]["score_threshold"] = score_threshold
+            if k_val:
+                vectorDb_kwargs["search_kwargs"]["k"] = k_val
+            if search_alg == "similarity_score_threshold" and score_thresh is not None:
+                vectorDb_kwargs["search_kwargs"]["score_threshold"] = score_thresh
             vectorDb = Chroma(
                 client=chroma_client, collection_name=collection_name, embedding_function=embeddings)
-            retrievers.append(vectorDb.as_retriever(search_type=search_algorithm, **vectorDb_kwargs))
+            retrievers.append(vectorDb.as_retriever(search_type=search_alg, **vectorDb_kwargs))
             # Use ensemble_weights[i] if available, else default to 1.0
             if ensemble_weights and i < len(ensemble_weights):
                 weights.append(ensemble_weights[i])
