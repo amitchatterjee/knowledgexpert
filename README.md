@@ -75,12 +75,15 @@ docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compos
 ## Build the knowledge base
 Run the following commands:
 ```bash
+
+# Graph store
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs \
     "$KNOWLEDGENET_HOME/src:knowledgenet" \
     "$KNOWLEDGENET_EX_HOME/autoins/src:autoins*" \
     --neo4jDatabase neo4j \
     --clear --store
 
+# Know-it-all expert vector store
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
@@ -90,13 +93,7 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
     --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
-    "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
-    "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store \
-    --collectionName 'analyst_collection' --chunkSize 4800 --chunkOverlap 720
-
-#########################
+# Deepxpert vector stores
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;entities.py,util.py;class:code,subclass:application,category:application" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
@@ -116,6 +113,7 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
     --collectionName 'framework_docs_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+
 ```
 
 ## Execute Knowledgexpert cli
