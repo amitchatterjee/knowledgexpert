@@ -16,14 +16,33 @@ def replacer(match):
     return os.environ.get(env_var, "")
 
 def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
-    # Replace any string values in args_dict with environment variables if specified as ${ENV}
     pattern = re.compile(r"\$\{([^}]+)\}")
+    def resolve_value(val):
+        if isinstance(val, str):
+            return pattern.sub(replacer, val)
+        elif isinstance(val, dict):
+            return resolve_env_vars(val)
+        elif isinstance(val, (list, tuple, set)):
+            resolved_collection = []
+            for item in val:
+                if isinstance(item, str):
+                    resolved_collection.append(pattern.sub(replacer, item))
+                elif isinstance(item, dict):
+                    resolved_collection.append(resolve_env_vars(item))
+                else:
+                    resolved_collection.append(item)
+            # Return the same type as input
+            if isinstance(val, tuple):
+                return tuple(resolved_collection)
+            elif isinstance(val, set):
+                return set(resolved_collection)
+            else:
+                return resolved_collection
+        else:
+            return val
     resolved = {}
     for k, v in args_dict.items():
-        if isinstance(v, str):
-            resolved[k] = pattern.sub(replacer, v)
-        else:
-            resolved[k] = v
+        resolved[k] = resolve_value(v)
     return resolved
 
 

@@ -7,8 +7,8 @@
     "embeddingApiUrl": "http://localhost:9000",
     "embeddingModel": "${EMBEDDING_MODEL_DATA}",
     "embeddings": [
-        "code|openai|https://api.openai.com/v1/embeddings|text-embedding-3-small", 
-        "doc|huggingface|http://localhost:9000|BAAI/bge-m3"],
+        "code|openai|https://api.openai.com/v1/embeddings|${EMBEDDING_MODEL_CODE}", 
+        "doc|huggingface|http://localhost:9000|${EMBEDDING_MODEL_DATA}"],
 
     "chromaHost": "localhost",
     "chromaPort": 8000,
