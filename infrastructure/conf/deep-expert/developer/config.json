@@ -5,11 +5,16 @@
     "llmApiEndpoint": "https://api.openai.com/v1",
 
     "embeddingApiUrl": "http://localhost:9000",
-    "embeddingModel": "${EMBEDDING_MODEL}",
-    
+    "embeddingModel": "${EMBEDDING_MODEL_DATA}",
+    "embeddings": [
+        "code|openai|https://api.openai.com/v1/embeddings|text-embedding-3-small", 
+        "doc|huggingface|http://localhost:9000|BAAI/bge-m3"],
+
     "chromaHost": "localhost",
     "chromaPort": 8000,
-    "baseCollections": ["app_platform_collection", "rules_collection"],
+    "baseCollections": [
+        "app_platform_collection|similarity|||code", 
+        "rules_collection|mmr|||code"],
     "ensembleWeights": [0.25, 0.75],
 
     "format": "structured",

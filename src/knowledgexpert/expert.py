@@ -37,6 +37,7 @@ class Expert:
         self.logger = logger
         self.structure = structure
         self.prompt_dir = self.args.promptDir if self.args.promptDir else default_conf_dir
+        self.embeddings_dict = {}
 
         logging.getLogger("langchain").setLevel(self.logger.level)
         # Suppress HTTP request/response messages
@@ -47,14 +48,16 @@ class Expert:
         logging.getLogger("langchain.telemetry").setLevel(logging.WARNING)
         logging.getLogger("langchain_community.telemetry").setLevel(logging.WARNING)
 
-        self.embeddings = setup_embeddings(
-            self.args.embeddingModel, self.args.embeddingApiUrl)
+        for embedding in self.args.embeddings:
+            embeddings_tpl = setup_embeddings(
+                self.args.embeddingModel, self.args.embeddingApiUrl, self.args.embeddingProvider, embedding)
+            self.embeddings_dict[embeddings_tpl[0]] = embeddings_tpl[1]
 
         self.graph_chain = self._setup_graph_chain(
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
         self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.searchAlgorithm,
-                    self.args.scoreThreshold, self.args.ensembleWeights, self.args.k, self.args.contextPaths, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
+                    self.args.scoreThreshold, self.args.ensembleWeights, self.args.k, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         if getattr(self.args, "disableHistory", False):
             self.chat = self.rag_chain
@@ -79,28 +82,30 @@ class Expert:
         file_path = os.path.join(hist_dir, f"history_{session_id}.json")
         return FileChatMessageHistory(file_path=file_path)
 
-    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, search_algorithm, score_threshold, ensemble_weights, k, context_paths, embeddings):
-        faiss_store = build_faiss_store_from_context(context_paths, embeddings)
+    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, search_algorithm, score_threshold, ensemble_weights, k, context_paths, context_paths_embedding, embeddings_dict):
+        faiss_store = None
+        if context_paths:
+            faiss_store = build_faiss_store_from_context(context_paths, embeddings_dict[context_paths_embedding])
+        
         chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
         retrievers = []
         weights = []
         if not isinstance(base_collections, list):
             base_collections = [base_collections]
-        # Tokenize each collection_name using ':' and extract parameters
         for i, collection_str in enumerate(base_collections):
-            # TODO - add embeddings to this mix
-            tokens = collection_str.split(':')
+            tokens = collection_str.split('|')
             collection_name = tokens[0]
             search_alg = tokens[1] if len(tokens) > 1 and tokens[1] else search_algorithm
             k_val = int(tokens[2]) if len(tokens) > 2 and tokens[2] else k
             score_thresh = float(tokens[3]) if len(tokens) > 3 and tokens[3] else score_threshold
+            embedding_id = tokens[4] if len(tokens) > 4 and tokens[4] else 'default'
             vectorDb_kwargs = {"search_kwargs": {}}
             if k_val:
                 vectorDb_kwargs["search_kwargs"]["k"] = k_val
             if search_alg == "similarity_score_threshold" and score_thresh is not None:
                 vectorDb_kwargs["search_kwargs"]["score_threshold"] = score_thresh
             vectorDb = Chroma(
-                client=chroma_client, collection_name=collection_name, embedding_function=embeddings)
+                client=chroma_client, collection_name=collection_name, embedding_function=embeddings_dict[embedding_id])
             retrievers.append(vectorDb.as_retriever(search_type=search_alg, **vectorDb_kwargs))
             # Use ensemble_weights[i] if available, else default to 1.0
             if ensemble_weights and i < len(ensemble_weights):
@@ -134,22 +139,23 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, chromaHost, chromaPort, baseCollections, searchAlgorithm, scoreThreshold, ensembleWeights, k, contextPaths, llmModel, llmApiEndpoint, format):
+    def _setup_vector_chain(self, chroma_host, chroma_port, base_collections, search_algorithm, score_threshold, ensemble_weights, k, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format):
         # Setup base retriever
         base_retriever = self._setup_vector_stores(
-            chroma_host=chromaHost,
-            chroma_port=chromaPort,
-            base_collections=baseCollections,
-            search_algorithm=searchAlgorithm,
-            score_threshold=scoreThreshold,
-            ensemble_weights=ensembleWeights,
+            chroma_host=chroma_host,
+            chroma_port=chroma_port,
+            base_collections=base_collections,
+            search_algorithm=search_algorithm,
+            score_threshold=score_threshold,
+            ensemble_weights=ensemble_weights,
             k=k,
-            context_paths=contextPaths,
-            embeddings=self.embeddings
+            context_paths=context_paths,
+            context_paths_embedding=context_paths_embedding,
+            embeddings_dict=self.embeddings_dict
         )
 
-        llm = setup_llm(llmModel=llmModel,
-                        llmApiEndpoint=llmApiEndpoint, output_format=format)
+        llm = setup_llm(llm_model=llm_model,
+                        llm_api_endpoint=llm_api_endpoint, output_format=format)
 
         llm_prompt_path = os.path.join(self.prompt_dir, "vector_prompt.txt")
         with open(llm_prompt_path, "r", encoding="utf-8") as f:

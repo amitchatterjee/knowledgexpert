@@ -30,23 +30,31 @@ services:
       - neo4j_data:/data
     restart: unless-stopped
 
-  huggingface-embeddings:
+  huggingface-embeddings-data:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
-    container_name: huggingface-embeddings
+    container_name: huggingface-embeddings-data
     ports:
       - "9000:80"
     environment:
       - HF_TOKEN=${HF_TOKEN}
       - DEVICE=cpu
-      - MODEL_ID=${EMBEDDING_MODEL:-sentence-transformers/msmarco-MiniLM-L6-v3}
-      #- MODEL_ID=sentence-transformers/all-MiniLM-L12-v2-2048
-      #- MODEL_ID=Qwen/Qwen3-Embedding-0.6B
-      #- MODEL_ID=BAAI/bge-base-en-v1.5
-      #- MODEL_ID=BAAI/bge-m3
+      - MODEL_ID=${EMBEDDING_MODEL_DATA:-sentence-transformers/msmarco-MiniLM-L6-v3}
     volumes:
       - huggingface_data:/data
-      #- ${HOME}/embedding-models:/data
     restart: unless-stopped
+
+  # huggingface-embeddings-code:
+  #     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
+  #     container_name: huggingface-embeddings-code
+  #     ports:
+  #       - "9090:80"
+  #     environment:
+  #       - HF_TOKEN=${HF_TOKEN}
+  #       - DEVICE=cpu
+  #       - MODEL_ID=${EMBEDDING_MODEL_CODE:-nomic-ai/nomic-embed-code}
+  #     volumes:
+  #       - huggingface_code:/data
+  #     restart: unless-stopped
 
 volumes:
   ollama_data:
@@ -61,3 +69,6 @@ volumes:
   huggingface_data:
     driver: local
     name: huggingface_data
+  huggingface_code:
+    driver: local
+    name: huggingface_code

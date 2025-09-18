@@ -5,11 +5,17 @@
     "llmApiEndpoint": "https://api.anthropic.com",
 
     "embeddingApiUrl": "http://localhost:9000",
-    "embeddingModel": "${EMBEDDING_MODEL}",
-    
+    "embeddingModel": "${EMBEDDING_MODEL_DATA}",
+    "embeddings": [
+        "code|openai|https://api.openai.com/v1/embeddings|text-embedding-3-small", 
+        "doc|huggingface|http://localhost:9000|BAAI/bge-m3"],
+
     "chromaHost": "localhost",
     "chromaPort": 8000,
-    "baseCollections": ["rules_collection:similarity:3", "app_docs_collection:mmr:10", "framework_docs_collection:mmr:3"],
+    "baseCollections": [
+        "rules_collection|similarity|3||code", 
+        "app_docs_collection|mmr|5||doc", 
+        "framework_docs_collection|mmr|3||doc"],
     "ensembleWeights": [0.1, 0.8, 0.1],
     "searchAlgorithm": "similarity",
 

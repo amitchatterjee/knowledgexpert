@@ -6,6 +6,7 @@ import importlib
 import json
 
 from knowledgexpert.expert import Expert
+from knowledgexpert.util import resolve_env_vars
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
@@ -43,15 +44,17 @@ def serve_cli(expert):
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="KnowledgeNet Code & Graph Assistant")
     # Vector RAG options
-    parser.add_argument("--llmModel", default=None, help="LLM model (default: openai:deepseek-r1-671b)")
+    parser.add_argument("--llmModel", default=None, help="LLM model")
     parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint")
 
-    parser.add_argument("--embeddingApiUrl", default=None, help="URL of remote HuggingFace embedding server (optional)")
-    parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L6-v3', help="Embedding model (default: msmarco-MiniLM-L6-v3)")
+    parser.add_argument("--embeddingApiUrl", default=None, help="Default URL for the embedding server (optional)")
+    parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L6-v3', help="Default embedding model (default: msmarco-MiniLM-L6-v3)")
+    parser.add_argument("--embeddingProvider", default='huggingface', choices=['openai', 'huggingface'], help="Default embedding provider (default: huggingface)")
+    parser.add_argument("--embeddings", nargs='+', default=[None], help='Embeddings used for this application. Accepts one or more values. Each value is of the format: <embedding_id>:[embedding_url][|][embedding_model][|][k][|][score_threshold][|][embedding_id]')
 
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
-    parser.add_argument("--baseCollections", nargs='+', default=['all_collection'], help='Base collection names (default: all_collection). Accepts one or more values. Each value is of the format: <collection_name>[:][search_algorithm][:][k][:][score_threshold]')
+    parser.add_argument("--baseCollections", nargs='+', default=['all_collection'], help='Base collection names (default: all_collection). Accepts one or more values. Each value is of the format: <collection_name>[|][search_algorithm][|][k][|][score_threshold]')
     parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Default search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
     parser.add_argument("--scoreThreshold", type=float, default=None, help="Default score threshold for similarity_score_threshold search (optional)")
     parser.add_argument("--k", type=int, default=None, help="Default k (nearest neighbor) value")
@@ -60,6 +63,8 @@ def parse_args(args_list=None):
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")
 
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
+    parser.add_argument("--contextPathsEmbedding", default='default', help="Embedding id to use for files in the contextPaths")
+
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[], help="Weights for ensemble retriever (default: [])")
     
     parser.add_argument("--neo4jUri", type=str, default="bolt://localhost:7687", help="Neo4j connection URI.")
@@ -87,30 +92,32 @@ def parse_args(args_list=None):
 
 if __name__ == "__main__":  
     args = parse_args()
+
     base_config = {}
     if args.confDir:
         config_path = os.path.join(args.confDir, "config.json")
         with open(config_path, "r") as f:
             base_config = json.load(f)
-    if "confDir" in base_config:
-        base_config.pop("confDir", None)
-
+            base_config = resolve_env_vars(base_config)
+            delattr(args, "confDir")
+           
     structure_class_path = args.structureClass
     delattr(args, "structureClass")
-    
+
     merged_config = base_config.copy()
     for k, v in vars(args).items():
-        if k not in base_config:
+        print(k,'=',v)
+        if k not in merged_config:
+            print('not')
             merged_config[k] = v
-        elif v is not None:
+        elif v is not None and not merged_config[k]:
             merged_config[k] = v
-    # Dynamically import and resolve structure class from string
     
     log_level = getattr(logging, merged_config["log"].upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger('knowledgexpert')
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
-    logger.info("Initializing Knowledgexpert using parameters: %s", args)
+    logger.info("Initializing Knowledgexpert using parameters: %s", merged_config)
 
     module_name, class_name = structure_class_path.rsplit('.', 1)
     structure_module = importlib.import_module(module_name)

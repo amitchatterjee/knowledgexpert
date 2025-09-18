@@ -1,11 +1,9 @@
 import logging
 import argparse
-import re
 
 from knowledgexpert.deepxpert import ExpertsGraph
 from expert_cli import parse_args as default_values
 import os
-import json
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="ExpertsGraph LLM Assistant")

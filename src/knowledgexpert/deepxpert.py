@@ -8,6 +8,7 @@ from langgraph.graph import StateGraph, END
 from langchain_core.runnables import RunnableLambda, RunnableBranch, RunnableParallel
 from langchain_core.tools import StructuredTool
 
+from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.expert import Expert
 from knowledgexpert.structures import AnalystOutput, CodingOutput
 
@@ -54,28 +55,11 @@ class ExpertsGraph:
         graph.set_entry_point("analyst")
         self.compiled_graph = graph.compile()
 
-    def _replacer(self, match):
-        env_var = match.group(1)
-        return os.environ.get(env_var, "")
-
-    def _resolve_env_vars(self, args_dict: dict[str, str]) -> dict[str, str]:
-        # Replace any string values in args_dict with environment variables if specified as ${ENV}
-        pattern = re.compile(r"\$\{([^}]+)\}")
-        resolved = {}
-        for k, v in args_dict.items():
-            if isinstance(v, str):
-                #print(k, '=', v)
-                #print(pattern.findall(v))
-                resolved[k] = pattern.sub(self._replacer, v)
-            else:
-                resolved[k] = v
-        return resolved
-
     def _init_expert(self, logger, conf_dir, type, default_arg_vals, structure=None):
         config_path = os.path.join(conf_dir, type, "config.json")
         with open(config_path, "r") as f:
             expert_config = json.load(f)
-        args_dict = self._resolve_env_vars(expert_config)
+        args_dict = resolve_env_vars(expert_config)
         args = default_arg_vals
         args.update(args_dict)
         logger.info(f"Configuration for {type} - {args}")

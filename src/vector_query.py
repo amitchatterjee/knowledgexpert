@@ -1,8 +1,7 @@
 import argparse
 import chromadb
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from knowledgexpert.util import setup_embeddings
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Query REPL")
@@ -12,22 +11,19 @@ def parse_args():
     parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L6-v3", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Remote HuggingFace Inference API endpoint URL (optional)")
     parser.add_argument("--k", type=int, default=100, help="Number of nearest neighbors to retrieve")
+    parser.add_argument("--embeddingProvider", default='huggingface', choices=['openai', 'huggingface'], help="Embedding provider (default: huggingface)")
     parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Search algorithm to use (e.g., 'similarity', 'mmr', etc.)")
     parser.add_argument("--scoreThreshold", type=float, default=0.7, help="Score threshold for similarity_score_threshold search algorithm")
     return parser.parse_args()
 
 def init_vector_store(args):
     chroma_client = chromadb.HttpClient(host=args.chromaHost, port=args.chromaPort)
-    embedding_function = None
-    embedding_api_url = getattr(args, 'embeddingApiUrl', None)
-    if embedding_api_url:
-        embedding_function = HuggingFaceInferenceAPIEmbeddings(
-            api_url=embedding_api_url,
-            model_name=args.embeddingModel,
-            api_key=""
-        )
-    else:
-        embedding_function = HuggingFaceEmbeddings(model_name=args.embeddingModel)
+
+    _, embedding_function = setup_embeddings(
+        def_embedding_model=args.embeddingModel,
+        def_embedding_api_url=args.embeddingApiUrl,
+        def_embedding_provider=args.embeddingProvider)
+    
     vector_store = Chroma(
         client=chroma_client,
         collection_name=args.collectionName,

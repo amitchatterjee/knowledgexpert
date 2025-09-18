@@ -34,8 +34,9 @@ export KNOWLEDGEXPERT_VSCODE_HOME=$GIT_HOME/git/knowledgexpert-vscode
 export HF_TOKEN=<huggingface_token>
 export ANTHROPIC_API_KEY=<anthropic_api_key>
 export OPENAI_API_KEY=<openai_key>
-#export EMBEDDING_MODEL=msmarco-MiniLM-L6-v3
-export EMBEDDING_MODEL=BAAI/bge-m3
+#export EMBEDDING_MODEL_DATA=msmarco-MiniLM-L6-v3
+export EMBEDDING_MODEL_DATA=BAAI/bge-m3
+export EMBEDDING_MODEL_CODE=BAAI/bge-m3
 # Apply the changes immediately
 source ~/.bashrc
 ```
@@ -90,45 +91,54 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" \
     "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
     --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
 # Deepxpert vector stores
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;entities.py,util.py;class:code,subclass:application,category:application" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
+    --embeddingApiUrl "https://api.openai.com/v1/embeddings"  --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' \
     --collectionName 'app_platform_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
+    --embeddingApiUrl "https://api.openai.com/v1/embeddings" --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' \
     --collectionName 'rules_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --clear --store \
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --clear --store \
     --collectionName 'app_docs_collection' --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+`python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" \
-    --collectionName 'framework_docs_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
+    --collectionName 'framework_docs_collection' --clear --store --chunkSize 4800 --chunkOverlap 720`
+
+```
+
+## Query the vector database
+```bash
+python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --collectionName 'all_collection'
+
+python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "https://api.openai.com/v1/embeddings" --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' --collectionName 'rules_collection'
 
 ```
 
 ## Execute Knowledgexpert cli
 ```bash
 # Use codellama as the graph llm and gemma as general llm running on ollama. There is no cost to use it but it is slooooow.
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest" --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest" --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
 
 # Use anthropic claude as the graph llm and the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Use anthropic claude as the graph llm and gpt4.1-mini as general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL" --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com" --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
-
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com" --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
 
 # Load command line params from a config file:
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/expert --structureClass 'knowledgexpert.structures.CodingOutput'
+
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/deep-expert/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
 
 ```
@@ -149,10 +159,6 @@ python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py --requestPath $KNOWLEDGEXPERT_H
 uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src"
 ```
 
-## Query the vector database
-```bash
-python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL"
-```
 ## List the available models
 ```bash
 # Openai

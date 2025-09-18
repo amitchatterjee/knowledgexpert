@@ -5,7 +5,7 @@
     "llmApiEndpoint": "https://api.openai.com/v1",
 
     "embeddingApiUrl": "http://localhost:9000",
-    "embeddingModel": "${EMBEDDING_MODEL}",
+    "embeddingModel": "${EMBEDDING_MODEL_DATA}",
     
     "chromaHost": "localhost",
     "chromaPort": 8000,

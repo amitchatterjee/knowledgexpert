@@ -7,6 +7,7 @@ from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from knowledgexpert.chunker import create_chunks
+from knowledgexpert.util import setup_embeddings
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
@@ -19,6 +20,7 @@ def parse_args():
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
     parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L6-v3", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Remote HuggingFace Inference API endpoint URL (optional)")
+    parser.add_argument("--embeddingProvider", default='huggingface', choices=['openai', 'huggingface'], help="Embedding provider (default: huggingface)")
     parser.add_argument("--clear", action="store_true", help="Purge the collection before adding new documents")
     parser.add_argument("--print", action="store_true", help="Print each chunk's source, metadata, and content")
     parser.add_argument("--store", action="store_true", help="Store the chunks in the vector store")
@@ -70,17 +72,11 @@ def main(args):
             logger.info("Purging old values from store...")
             if args.collectionName in [col.name for col in chroma_client.list_collections()]:
                 chroma_client.delete_collection(args.collectionName)
-        # Support remote HuggingFace endpoint if embeddingApiUrl is provided
-        embedding_function = None
-        embedding_api_url = getattr(args, 'embeddingApiUrl', None)
-        if embedding_api_url:
-            embedding_function = HuggingFaceInferenceAPIEmbeddings(
-                api_url=embedding_api_url,
-                model_name=args.embeddingModel,
-                api_key=""
-            )
-        else:
-            embedding_function = HuggingFaceEmbeddings(model_name=args.embeddingModel)
+        
+        _,embedding_function = setup_embeddings(
+            def_embedding_model=args.embeddingModel,
+            def_embedding_api_url=args.embeddingApiUrl,
+            def_embedding_provider=args.embeddingProvider)
         
         vector_store = Chroma(
             client=chroma_client,

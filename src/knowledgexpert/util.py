@@ -1,3 +1,6 @@
+import re
+import os
+
 import os
 import string
 from langchain_community.document_loaders import TextLoader
@@ -6,32 +9,46 @@ from langchain_community.vectorstores import FAISS
 from langchain.chat_models.base import init_chat_model
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+def replacer(match):
+    env_var = match.group(1)
+    return os.environ.get(env_var, "")
+
+def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
+    # Replace any string values in args_dict with environment variables if specified as ${ENV}
+    pattern = re.compile(r"\$\{([^}]+)\}")
+    resolved = {}
+    for k, v in args_dict.items():
+        if isinstance(v, str):
+            resolved[k] = pattern.sub(replacer, v)
+        else:
+            resolved[k] = v
+    return resolved
+
 
 def build_faiss_store_from_context(context_paths, embeddings):
     additional_context = []
-    if context_paths:
-        for path in context_paths:
-            if os.path.isdir(path):
-                for root, _, files in os.walk(path):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        if not is_text_file(file_path):
-                            continue
-                        try:
-                            loader = TextLoader(
-                                file_path, encoding="utf-8", autodetect_encoding=True)
-                            additional_context.extend(loader.load())
-                        except Exception:
-                            continue
-            elif os.path.isfile(path):
-                try:
-                    loader = TextLoader(
-                        path, encoding="utf-8", autodetect_encoding=True)
-                    additional_context.extend(loader.load())
-                except Exception:
-                    continue
+    for path in context_paths:
+        if os.path.isdir(path):
+            for root, _, files in os.walk(path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if not is_text_file(file_path):
+                        continue
+                    try:
+                        loader = TextLoader(
+                            file_path, encoding="utf-8", autodetect_encoding=True)
+                        additional_context.extend(loader.load())
+                    except Exception:
+                        continue
+        elif os.path.isfile(path):
+            try:
+                loader = TextLoader(
+                    path, encoding="utf-8", autodetect_encoding=True)
+                additional_context.extend(loader.load())
+            except Exception:
+                continue
 
     if additional_context:
         text_splitter = RecursiveCharacterTextSplitter(
@@ -40,6 +57,7 @@ def build_faiss_store_from_context(context_paths, embeddings):
         faiss_store = FAISS.from_documents(docs, embeddings)
         return faiss_store
     return None
+
 
 def is_text_file(filepath, blocksize=512):
     try:
@@ -55,12 +73,13 @@ def is_text_file(filepath, blocksize=512):
     except Exception:
         return False
 
-def setup_llm(llmModel, llmApiEndpoint, output_format):
-    model_provider = llmModel.split(":")[0]
+
+def setup_llm(llm_model, llm_api_endpoint, output_format):
+    model_provider = llm_model.split(":")[0]
     if model_provider == 'openai' or model_provider == 'ollama':
         return init_chat_model(
-            llmModel,
-            base_url=llmApiEndpoint,
+            llm_model,
+            base_url=llm_api_endpoint,
             temperature=0,
             streaming=True,
             model_kwargs={"response_format": {"type": "json_object"}
@@ -68,18 +87,35 @@ def setup_llm(llmModel, llmApiEndpoint, output_format):
         )
     else:
         return init_chat_model(
-            llmModel,
-            base_url=llmApiEndpoint,
+            llm_model,
+            base_url=llm_api_endpoint,
             temperature=0,
             streaming=True,
         )
 
-def setup_embeddings(embeddingModel, embeddingApiUrl):
-    if embeddingApiUrl:
-        return HuggingFaceInferenceAPIEmbeddings(
-            api_url=embeddingApiUrl,
-            model_name=embeddingModel,
+
+def setup_embeddings(def_embedding_model, def_embedding_api_url, def_embedding_provider, embedding=None):
+    if embedding:
+        tokens = embedding.split('|')
+        embedding_id = tokens[0] if tokens[0] else 'default'
+        embedding_provider = tokens[1] if len(tokens) > 1 and tokens[1] else def_embedding_provider
+        embedding_api_url = tokens[2] if len(
+            tokens) > 2 and tokens[2] else def_embedding_api_url
+        embedding_model = tokens[3] if len(
+            tokens) > 3 and tokens[3] else def_embedding_model
+    else:
+        embedding_id = 'default'
+        embedding_provider = def_embedding_provider
+        embedding_api_url = def_embedding_api_url
+        embedding_model = def_embedding_model
+
+    if embedding_provider == "openai":
+        return embedding_id,OpenAIEmbeddings(model=embedding_model)
+    elif embedding_api_url:
+        return embedding_id, HuggingFaceInferenceAPIEmbeddings(
+            api_url=embedding_api_url,
+            model_name=embedding_model,
             api_key=""
         )
     else:
-        return HuggingFaceEmbeddings(model_name=embeddingModel)
+        return embedding_id, HuggingFaceEmbeddings(model_name=embedding_model)
