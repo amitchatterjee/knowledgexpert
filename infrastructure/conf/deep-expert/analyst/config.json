@@ -13,11 +13,25 @@
     "chromaHost": "localhost",
     "chromaPort": 8000,
     "baseCollections": [
-        "rules_collection|similarity|3||code", 
-        "app_docs_collection|mmr|5||doc", 
-        "framework_docs_collection|mmr|3||doc"],
+        {
+            "collectionName": "rules_collection",
+            "searchAlgorithm": "similarity",
+            "k": 3,
+            "embeddingId": "code"
+        },
+        {
+            "collectionName": "app_docs_collection",
+            "searchAlgorithm": "mmr",
+            "k": 5,
+            "embeddingId": "doc"
+        },
+        {
+            "collectionName": "framework_docs_collection",
+            "searchAlgorithm": "mmr",
+            "k": 3,
+            "embeddingId": "doc"
+        }],
     "ensembleWeights": [0.1, 0.8, 0.1],
-    "searchAlgorithm": "similarity",
 
     "format": "structured",
 

@@ -13,8 +13,16 @@
     "chromaHost": "localhost",
     "chromaPort": 8000,
     "baseCollections": [
-        "app_platform_collection|similarity|||code", 
-        "rules_collection|mmr|||code"],
+        {
+            "collectionName": "app_platform_collection",
+            "searchAlgorithm": "similarity",
+            "embeddingId": "code"
+        },
+        {
+            "collectionName": "rules_collection",
+            "searchAlgorithm": "similarity",
+            "embeddingId": "code"
+        }],
     "ensembleWeights": [0.25, 0.75],
 
     "format": "structured",

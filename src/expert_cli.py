@@ -41,9 +41,18 @@ def serve_cli(expert):
         console.print("Knowledge Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(out)
 
+def collections_mapper(base_collection, default_search_algorithm, k,default_score_threshold):
+    tokens = base_collection.split('|')
+    collection_name = tokens[0]
+    search_alg = tokens[1] if len(tokens) > 1 and tokens[1] else default_search_algorithm
+    k_val = int(tokens[2]) if len(tokens) > 2 and tokens[2] else k
+    score_thresh = float(tokens[3]) if len(tokens) > 3 and tokens[3] else default_score_threshold
+    embedding_id = tokens[4] if len(tokens) > 4 and tokens[4] else 'default'
+    to_dict = {'collectionName': collection_name, "searchAlgorithm": search_alg, "k": k_val, "scoreThreshold": score_thresh, "embeddingId": embedding_id}
+    return to_dict
+
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="KnowledgeNet Code & Graph Assistant")
-    # Vector RAG options
     parser.add_argument("--llmModel", default=None, help="LLM model")
     parser.add_argument("--llmApiEndpoint", default=None, help="LLM API endpoint")
 
@@ -85,12 +94,19 @@ def parse_args(args_list=None):
     parser.add_argument("--confDir", default=None, help="Directory containing config.json for base configuration (optional)")
 
     parser.add_argument("--structureClass", default="knowledgexpert.structures.CodingAdvice", help="Fully qualified class name for structure (default: knowledgexpert.structures.CodingAdvice)")
+    args = None
     if args_list is not None:
-        return parser.parse_args(args_list)
+        args = parser.parse_args(args_list)
     else:
-        return parser.parse_args()
+        args = parser.parse_args()
+    
+    collections_list = []
+    for base_collection in args.baseCollections:
+        collections_list.append(collections_mapper(base_collection, args.searchAlgorithm, args.k, args.scoreThreshold))
+    args.baseCollections = collections_list
+    return args
 
-if __name__ == "__main__":  
+if __name__ == "__main__":
     args = parse_args()
 
     base_config = {}
@@ -106,9 +122,7 @@ if __name__ == "__main__":
 
     merged_config = base_config.copy()
     for k, v in vars(args).items():
-        print(k,'=',v)
         if k not in merged_config:
-            print('not')
             merged_config[k] = v
         elif v is not None and not merged_config[k]:
             merged_config[k] = v
