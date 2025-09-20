@@ -112,29 +112,28 @@ def setup_llm(llm_model, llm_api_endpoint, output_format):
             streaming=True,
         )
 
-
-def setup_embeddings(def_embedding_model, def_embedding_api_url, def_embedding_provider, embedding=None):
+def embedding_mapper(embedding, def_embedding_provider, def_embedding_api_url, def_embedding_model):
     if embedding:
         tokens = embedding.split('|')
         embedding_id = tokens[0] if tokens[0] else 'default'
         embedding_provider = tokens[1] if len(tokens) > 1 and tokens[1] else def_embedding_provider
-        embedding_api_url = tokens[2] if len(
-            tokens) > 2 and tokens[2] else def_embedding_api_url
-        embedding_model = tokens[3] if len(
-            tokens) > 3 and tokens[3] else def_embedding_model
+        embedding_api_url = tokens[2] if len(tokens) > 2 and tokens[2] else def_embedding_api_url
+        embedding_model = tokens[3] if len(tokens) > 3 and tokens[3] else def_embedding_model
     else:
         embedding_id = 'default'
         embedding_provider = def_embedding_provider
         embedding_api_url = def_embedding_api_url
         embedding_model = def_embedding_model
+    to_dict = {'embeddingId': embedding_id, 'embeddingProvider': embedding_provider, 'embeddingApiUrl': embedding_api_url, 'embeddingModel': embedding_model}
+    return to_dict
 
-    if embedding_provider == "openai":
-        return embedding_id,OpenAIEmbeddings(model=embedding_model)
-    elif embedding_api_url:
-        return embedding_id, HuggingFaceInferenceAPIEmbeddings(
-            api_url=embedding_api_url,
-            model_name=embedding_model,
-            api_key=""
-        )
+def setup_embedding(embedding):
+    if embedding['embeddingProvider'] == "openai":
+        return OpenAIEmbeddings(model=embedding['embeddingModel'])
+    elif 'embeddingApiUrl' in embedding and embedding['embeddingApiUrl']:
+        return HuggingFaceInferenceAPIEmbeddings(
+            api_url=embedding['embeddingApiUrl'],
+            model_name=embedding['embeddingModel'],
+            api_key="")
     else:
-        return embedding_id, HuggingFaceEmbeddings(model_name=embedding_model)
+        return HuggingFaceEmbeddings(model_name=embedding['embeddingModel'])

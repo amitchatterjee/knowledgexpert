@@ -21,7 +21,7 @@ from langchain_community.graphs import Neo4jGraph
 from langchain.chains import GraphCypherQAChain
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-from knowledgexpert.util import setup_embeddings
+from knowledgexpert.util import setup_embedding
 from knowledgexpert.util import setup_llm
 from knowledgexpert.util import build_faiss_store_from_context
 
@@ -49,10 +49,8 @@ class Expert:
         logging.getLogger("langchain_community.telemetry").setLevel(logging.WARNING)
 
         for embedding in self.args.embeddings:
-            embeddings_tpl = setup_embeddings(
-                self.args.embeddingModel, self.args.embeddingApiUrl, self.args.embeddingProvider, embedding)
-            self.embeddings_dict[embeddings_tpl[0]] = embeddings_tpl[1]
-
+            self.embeddings_dict[embedding['embeddingId']] = setup_embedding(embedding)
+            
         self.graph_chain = self._setup_graph_chain(
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 

@@ -94,7 +94,7 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
     --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
-# Deepxpert vector stores
+# DeepXpert vector stores
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;entities.py,util.py;class:code,subclass:application,category:application" \
     --embeddingApiUrl "https://api.openai.com/v1/embeddings"  --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' \
@@ -110,10 +110,10 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --clear --store \
     --collectionName 'app_docs_collection' --chunkSize 4800 --chunkOverlap 720
 
-`python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
-    --collectionName 'framework_docs_collection' --clear --store --chunkSize 4800 --chunkOverlap 720`
+    --collectionName 'framework_docs_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
 ```
 
@@ -143,7 +143,7 @@ python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/inf
 
 ```
 
-## Execute Deepxpert CLI
+## Execute DeepXpert CLI
 ```bash
 
 # Interactive

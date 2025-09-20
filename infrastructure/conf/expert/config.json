@@ -3,14 +3,19 @@
 
     "llmModel": "gpt-4.1-mini",
     "llmApiEndpoint": "https://api.openai.com/v1",
-
-    "embeddingApiUrl": "http://localhost:9000",
-    "embeddingModel": "${EMBEDDING_MODEL_DATA}",
     
+    "embeddings": [
+        {
+            "embeddingId": "all",
+            "embeddingApiUrl": "http://localhost:9000",
+            "embeddingModel": "${EMBEDDING_MODEL_DATA}",
+            "embeddingProvider": "huggingface"
+        }],
+
     "chromaHost": "localhost",
     "chromaPort": 8000,
     "baseCollections": [{"collectionName": "all_collection", 
-                        "embeddingId": "default",
+                        "embeddingId": "all",
                         "searchAlgorithm": "mmr"}],
 
     "format": "raw",

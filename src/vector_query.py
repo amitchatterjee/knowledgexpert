@@ -1,7 +1,7 @@
 import argparse
 import chromadb
 from langchain_chroma import Chroma
-from knowledgexpert.util import setup_embeddings
+from knowledgexpert.util import embedding_mapper, setup_embedding
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Query REPL")
@@ -19,10 +19,7 @@ def parse_args():
 def init_vector_store(args):
     chroma_client = chromadb.HttpClient(host=args.chromaHost, port=args.chromaPort)
 
-    _, embedding_function = setup_embeddings(
-        def_embedding_model=args.embeddingModel,
-        def_embedding_api_url=args.embeddingApiUrl,
-        def_embedding_provider=args.embeddingProvider)
+    embedding_function = setup_embedding(embedding_mapper(None, args.embeddingProvider, args.embeddingApiUrl, args.embeddingModel))
     
     vector_store = Chroma(
         client=chroma_client,

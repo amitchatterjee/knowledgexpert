@@ -6,7 +6,7 @@ import importlib
 import json
 
 from knowledgexpert.expert import Expert
-from knowledgexpert.util import resolve_env_vars
+from knowledgexpert.util import resolve_env_vars, embedding_mapper
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
@@ -41,15 +41,16 @@ def serve_cli(expert):
         console.print("Knowledge Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(out)
 
-def collections_mapper(base_collection, default_search_algorithm, k,default_score_threshold):
+def collections_mapper(base_collection, default_search_algorithm, default_k,default_score_threshold):
     tokens = base_collection.split('|')
     collection_name = tokens[0]
     search_alg = tokens[1] if len(tokens) > 1 and tokens[1] else default_search_algorithm
-    k_val = int(tokens[2]) if len(tokens) > 2 and tokens[2] else k
+    k_val = int(tokens[2]) if len(tokens) > 2 and tokens[2] else default_k
     score_thresh = float(tokens[3]) if len(tokens) > 3 and tokens[3] else default_score_threshold
     embedding_id = tokens[4] if len(tokens) > 4 and tokens[4] else 'default'
     to_dict = {'collectionName': collection_name, "searchAlgorithm": search_alg, "k": k_val, "scoreThreshold": score_thresh, "embeddingId": embedding_id}
     return to_dict
+
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="KnowledgeNet Code & Graph Assistant")
@@ -104,6 +105,19 @@ def parse_args(args_list=None):
     for base_collection in args.baseCollections:
         collections_list.append(collections_mapper(base_collection, args.searchAlgorithm, args.k, args.scoreThreshold))
     args.baseCollections = collections_list
+    for attr in ["searchAlgorithm", "k", "scoreThreshold"]:
+        if hasattr(args, attr):
+            delattr(args, attr)
+
+    embeddings_list = []
+    for embedding in args.embeddings:
+        embeddings_list.append(embedding_mapper(
+            embedding, args.embeddingProvider,args.embeddingApiUrl, args.embeddingModel))
+    args.embeddings = embeddings_list
+    for attr in ["embeddingProvider","embeddingApiUrl","embeddingModel"]:
+        if hasattr(args, attr):
+            delattr(args, attr)
+
     return args
 
 if __name__ == "__main__":
