@@ -20,6 +20,7 @@ from langchain.retrievers import EnsembleRetriever
 from langchain_community.graphs import Neo4jGraph
 from langchain.chains import GraphCypherQAChain
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langgraph.graph import StateGraph, END
 
 from knowledgexpert.util import setup_embedding
 from knowledgexpert.util import setup_llm
@@ -61,6 +62,9 @@ class Expert:
         else:
             self.chat = RunnableWithMessageHistory(
                 self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")
+
+        # --- LangGraph workflow setup ---
+        self._setup_workflow_graph()
 
     def _format_docs(self, docs):
         if not docs:
@@ -185,37 +189,53 @@ class Expert:
             self.logger.info("Input for vector llm: %s", x)
         return None
 
-    def handle_question(self, user_query, name, interactions=''):
+    def _graph_rag_node(self, state):
         graph_context = ""
         if self.args.useGraphRag:
             self.logger.debug("Step 1: Querying Neo4j graph...")
             try:
-                graph_response = self.graph_chain.invoke(
-                    {"query": user_query, 
-                     "interactions": interactions
-                    })
+                graph_response = self.graph_chain.invoke({
+                    "query": state["input"],
+                    "interactions": state.get("interactions", "")
+                })
                 graph_context = graph_response.get("result", "")
                 self.logger.debug("Graph result:\n%s", graph_context)
             except Exception as e:
                 self.logger.error("Graph query failed: %s", e)
                 graph_context = ""
-        self.logger.debug(f"Step 2: Querying vector RAG with graph context: %s", graph_context)
+        state["graph_context"] = graph_context
+        return state
+
+    def _vector_rag_node(self, state):
+        self.logger.debug(f"Step 2: Querying vector RAG with graph context: %s", state.get("graph_context", ""))
         try:
             out = self.chat.invoke({
-                "input": user_query, 
-                "graph_context": graph_context, 
-                "interactions": interactions}, 
-                config={
-                    "configurable": {"session_id": name}
-                })
+                "input": state["input"],
+                "graph_context": state.get("graph_context", ""),
+                "interactions": state.get("interactions", "")
+            }, config={"configurable": {"session_id": state["user_name"]}})
             if self.args.format == "structured":
                 out = self.structure.model_validate_json(out)
+            state["output"] = out
         except ValueError as ve:
-            self.logger.error(
-                "Structured output parsing failed: %s. Showing raw output.", ve)
-            return str(ve)
+            self.logger.error("Structured output parsing failed: %s. Showing raw output.", ve)
+            state["output"] = str(ve)
         except Exception as e:
             self.logger.error("Error during chain invocation: %s", e)
-            return str(e)
-        self.logger.debug("Vector query output: %s", out)
-        return out
+            state["output"] = str(e)
+        self.logger.debug("Vector query output: %s", state["output"])
+        return state
+
+    def _setup_workflow_graph(self):
+        graph = StateGraph(dict)
+        graph.add_node("graph_rag", RunnableLambda(self._graph_rag_node))
+        graph.add_node("vector_rag", RunnableLambda(self._vector_rag_node))
+        graph.add_edge("graph_rag", "vector_rag")
+        graph.add_edge("vector_rag", END)
+        graph.set_entry_point("graph_rag")
+        self.compiled_graph = graph.compile()
+
+    def handle_question(self, user_query, name, interactions=''):
+        state = {"input": user_query, "user_name": name, "interactions": interactions}
+        result = self.compiled_graph.invoke(state)
+        return result.get("output")
