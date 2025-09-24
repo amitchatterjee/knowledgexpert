@@ -10,7 +10,7 @@ from langchain_core.tools import StructuredTool
 
 from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.expert import Expert
-from knowledgexpert.structures import AnalystOutput, CodingOutput
+from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
 def write_file_tool(code: str, filename: str, directory: str) -> str:
     try:
@@ -40,6 +40,7 @@ class ExpertsGraph:
 
         self.analyst = self._init_expert(logger, self.args.confDir, "analyst", default_args, structure=AnalystOutput)
         self.developer = self._init_expert(logger, self.args.confDir, "developer", default_args, structure=CodingOutput)
+        self.tester = self._init_expert(logger, self.args.confDir, "tester", default_args, structure=TestingOutput)
         self._setup_graph()
 
     def _setup_graph(self):
@@ -77,8 +78,9 @@ class ExpertsGraph:
         return state
     
     def tester_node(self, state):
-        state["tester_output"] = "I am not ready to produce tests yet"
-        return state
+        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nTest-generation Requirements:\n{state["analyst_output"].testGenRequirements}"
+        response = self.tester.handle_question(state["input"], state["user_name"], interactions=analyst_output)
+        state["test_output"] = response
     
     def implementor_node(self, state):
         state["implementor_output"] = "I am not ready to configure yet"
@@ -96,6 +98,7 @@ class ExpertsGraph:
 
     def request_router_node(self, state):
         def classification(state):
+            #print(">>>>>>>>>>", state)
             return state["analyst_output"].classification
 
         return RunnableBranch(

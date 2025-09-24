@@ -1,0 +1,39 @@
+{
+    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/tester",
+
+    "llmModel": "gpt-4.1-mini",
+    "llmApiEndpoint": "https://api.openai.com/v1",
+
+    "embeddings": [
+        {
+            "embeddingId": "code",
+            "embeddingApiUrl": "https://api.openai.com/v1/embeddings|${EMBEDDING_MODEL_CODE}",
+            "embeddingModel": "${EMBEDDING_MODEL_CODE}",
+            "embeddingProvider": "openai"
+        },
+        {
+            "embeddingId": "doc",
+            "embeddingApiUrl": "http://localhost:9000",
+            "embeddingModel": "${EMBEDDING_MODEL_DATA}",
+            "embeddingProvider": "huggingface"
+        }
+    ],
+
+    "chromaHost": "localhost",
+    "chromaPort": 8000,
+    "baseCollections": [
+        {
+            "collectionName": "app_docs_collection",
+            "searchAlgorithm": "similarity",
+            "embeddingId": "doc"
+        }],
+    "ensembleWeights": [1],
+
+    "format": "structured",
+    "contextPaths": [],
+    
+    "useGraphRag": false,
+ 
+    "verbose": false,
+    "disableHistory": true
+}
