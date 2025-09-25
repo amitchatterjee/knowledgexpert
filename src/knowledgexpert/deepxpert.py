@@ -10,30 +10,30 @@ from langchain_core.tools import StructuredTool
 
 from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.expert import Expert
-from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput, TestFileOutput
+from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
-def write_files_tool(directory: str, ruleset: str, filename: str, code: str, rulename: str, testdata: list) -> str:
-    try:
-        file_list = []
-        if ruleset and filename and code:
-            full_path = os.path.join(directory, 'rules', ruleset, filename)
-            os.makedirs(os.path.dirname(full_path), exist_ok=True)
-            with open(full_path, "w") as f:
-                f.write(code)
-                file_list.append(full_path)
+def write_files_tool(directory: str, ruleset: str, file_name: str, code: str, rule_name: str, test_data: list) -> str:
+    file_list = []
+    if code:
+        if not ruleset or not file_name:
+            raise Exception('Either ruleset name or file name not specified')
         
-        if testdata:
-            test_dir = os.path.join(directory, 'test', 'vector', rulename)
-            os.makedirs(test_dir, exist_ok=True)
-            for each in testdata:
-                file_name = each.filename
-                full_path = os.path.join(test_dir, file_name)
-                with open(full_path, "w") as f:
-                    f.write(each.content)
-                    file_list.append(full_path)
-        return f"Successfully wrote files: {file_list}"
-    except Exception as e:
-        return f"Error creating files: {e}"
+        full_path = os.path.join(directory, 'rules', ruleset, file_name)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, "w") as f:
+            f.write(code)
+            file_list.append(full_path)
+    
+    if test_data:
+        test_dir = os.path.join(directory, 'test', 'vector', rule_name)
+        os.makedirs(test_dir, exist_ok=True)
+        for each in test_data:
+            file_name = each.filename
+            full_path = os.path.join(test_dir, file_name)
+            with open(full_path, "w") as f:
+                f.write(each.content)
+                file_list.append(full_path)
+    return {"files": file_list}
 
 write_files = StructuredTool.from_function(
     name="write_files",
@@ -124,19 +124,19 @@ class DeepXpert:
     def code_writer_tool_node(self, state):
         directory = getattr(self.args, "workspaceDir")
         ruleset = getattr(state.get("analyst_output", None), "ruleset", None)
-        filename = getattr(state.get("developer_output", None), "filename", None)
+        file_name = getattr(state.get("developer_output", None), "filename", None)
         code = getattr(state.get("developer_output", None), "code", None)
-        rulename = getattr(state.get("developer_output", None), "rulename", None)
+        rule_name = getattr(state.get("developer_output", None), "rulename", None)
         testdata = getattr(state.get("tester_output", None), "content", [])
         result = write_files.run({
             "directory": directory,
             "ruleset": ruleset,
-            "filename": filename,
+            "file_name": file_name,
             "code": code,
-            "rulename": rulename,
-            "testdata": testdata
+            "rule_name": rule_name,
+            "test_data": testdata
         })
-        state["code_writer_tool_output"] = result
+        state["file_writer_output"] = result
         return state
 
     def handle_request(self, request, name):
