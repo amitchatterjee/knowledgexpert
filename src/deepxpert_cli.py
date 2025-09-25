@@ -1,12 +1,12 @@
 import logging
 import argparse
 
-from knowledgexpert.deepxpert import ExpertsGraph
+from knowledgexpert.deepxpert import DeepXpert
 from expert_cli import parse_args as default_values
 import os
 
 def parse_args(args_list=None):
-    parser = argparse.ArgumentParser(description="ExpertsGraph LLM Assistant")
+    parser = argparse.ArgumentParser(description="DeepXpert LLM Assistant")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
     parser.add_argument("--confDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert"), help="Directory containing configurations (default: ~/.knowledgexpert/conf/deep-expert)")
     parser.add_argument("--workspaceDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "workspace", "deep-expert"), help="Directory for workspace (default: ~/.knowledgexpert/workspace/deep-expert)")
@@ -33,5 +33,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger("DeepExpert")
     dict_args = vars(args)
-    graph = ExpertsGraph(logger, vars(default_values([])), **dict_args)
+    graph = DeepXpert(logger, vars(default_values([])), **dict_args)
     process(args, logger, graph)

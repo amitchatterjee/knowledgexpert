@@ -5,6 +5,7 @@ class AnalystOutput(BaseModel):
     summary: str
     classification: str
     codeGenRequirements: str
+    ruleset: str = Field(description="Suggested ruleset name")
     configGenRequirements: str
     testGenRequirements: str
     analysis: str
@@ -21,8 +22,9 @@ class CodingOutput(BaseModel):
     summary: Optional[str] = Field("A one-line summary of the code snippet")
     description: Optional[str] = Field(
         description="Description of the code snippet")
-    code: str = Field(description="A Python Code Snippet")
-    filename: str = Field(description="Python file name")
+    code: str = Field(description="A Python code for the rule")
+    filename: str = Field(description="Python file name. Don't include module name")
+    rulename: str = Field(description="Python function name for this rule")
     explanation: Optional[str] = Field(
         description="Detailed explanation of the code")
     references: Optional[list[str]] = Field(
@@ -35,23 +37,15 @@ class CodingOutput(BaseModel):
                 fields.append(f"{field}:\n{value}")
         return f"{'\n\n'.join(fields)}"
 
-class TestFileOutout(BaseModel):
-    filename: str = Field(description="CSV file name")
+class TestFileOutput(BaseModel):
+    filename: str = Field(description="CSV filename")
     content: str = Field(description="CSV content")
-
-    def __str__(self):
-        fields = []
-        for field, value in self.__dict__.items():
-            if value is not None and value != "" and value != []:
-                fields.append(f"{field}:\n{value}")
-        return f"{'\n\n'.join(fields)}"
 
 class TestingOutput(BaseModel):
     summary: Optional[str] = Field("A one-line summary of the generated test data")
     description: Optional[str] = Field(
         description="Description of the test data")
-    # data: str = Field(description="Test data")
-    content: list[TestFileOutout] = Field("Test data")
+    content: list[TestFileOutput] = Field("Test data")
     explanation: Optional[str] = Field(
         description="Detailed explanation of the tests")
     references: Optional[list[str]] = Field(
@@ -61,10 +55,9 @@ class TestingOutput(BaseModel):
         fields = []
         for field, value in self.__dict__.items():
             if field == 'content':
-                buffer = '['
-                for i, element in enumerate(value):
-                    buffer = buffer + f"\n[{i+1}]:\n{element}"
-                buffer = buffer + '\n]'
+                buffer = ''
+                for element in value:
+                    buffer = buffer + f"\n{element.filename}:\n{element.content}"
                 fields.append(f"{field}:\n{buffer}")
             elif value is not None and value != "" and value != []:
                 fields.append(f"{field}:\n{value}")
