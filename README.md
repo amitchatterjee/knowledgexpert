@@ -156,7 +156,8 @@ python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py --requestPath $KNOWLEDGEXPERT_H
 
 ## Execute Knowledgexpert API
 ```bash
-uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src"
+uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src" --log-config ~/.knowledgexpert/conf/log-config.yaml
+
 ```
 
 ## List the available models

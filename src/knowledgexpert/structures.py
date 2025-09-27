@@ -4,10 +4,10 @@ from pydantic import BaseModel, Field
 class AnalystOutput(BaseModel):
     summary: str
     classification: str
-    codeGenRequirements: str
+    codeGenerationRequirements: str
     ruleset: str = Field(description="Suggested ruleset name")
-    configGenRequirements: str
-    testGenRequirements: str
+    configGenerationRequirements: str
+    testGenerationRequirements: str
     analysis: str
     references: Optional[list[str]]
 
@@ -23,8 +23,8 @@ class CodingOutput(BaseModel):
     description: Optional[str] = Field(
         description="Description of the code snippet")
     code: str = Field(description="A Python code for the rule")
-    filename: str = Field(description="Python file name. Don't include module name")
-    rulename: str = Field(description="Python function name for this rule")
+    fileName: str = Field(description="Python file name. Don't include module name")
+    ruleName: str = Field(description="Python function name for this rule")
     explanation: Optional[str] = Field(
         description="Detailed explanation of the code")
     references: Optional[list[str]] = Field(
@@ -38,7 +38,7 @@ class CodingOutput(BaseModel):
         return f"{'\n\n'.join(fields)}"
 
 class TestFileOutput(BaseModel):
-    filename: str = Field(description="CSV filename")
+    fileName: str = Field(description="CSV file name")
     content: str = Field(description="CSV content")
 
 class TestingOutput(BaseModel):
@@ -57,7 +57,7 @@ class TestingOutput(BaseModel):
             if field == 'content':
                 buffer = ''
                 for element in value:
-                    buffer = buffer + f"\n{element.filename}:\n{element.content}"
+                    buffer = buffer + f"\n{element.fileName}:\n{element.content}"
                 fields.append(f"{field}:\n{buffer}")
             elif value is not None and value != "" and value != []:
                 fields.append(f"{field}:\n{value}")

@@ -1,51 +1,139 @@
-from typing import Optional
+# Utility function to format a lower camel case string as described
+import re
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
-from knowledgexpert.expert import Expert
-from expert_cli import parse_args
+from pydantic import BaseModel
 import logging
 import json
 import os
+import expert_cli
+import deepxpert_cli
+from expert_cli import parse_args as default_values
+from knowledgexpert.deepxpert import DeepXpert
+from knowledgexpert.expert import Expert
+from knowledgexpert.util import resolve_env_vars
+from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
-'''
-Copilot Chat participant backend
-'''
-from knowledgexpert.util import resolve_env_vars
-from knowledgexpert.structures import CodingAdvice
+def init(expert_args_dict:dict[str,any], deepxpert_args_dict:dict[str,any]):
+    global expert, deep_expert
+    log_level = logging.getLevelName(logger.getEffectiveLevel())
+    expert = init_expert(expert_args_dict)
+    deep_expert = init_deep_expert(deepxpert_args_dict)
+
+def init_expert(args_dict):
+    args_dict = resolve_env_vars(args_dict)
+    default_args = vars(expert_cli.parse_args([]))
+    args = default_args
+    args.update(args_dict) 
+    logger.info("Expert args: %s", args)
+    return Expert(logger, structure=None, **args)
+
+def init_deep_expert(args_dict):
+    args_dict = resolve_env_vars(args_dict)
+    default_args = vars(deepxpert_cli.parse_args([]))
+    args = default_args
+    args.update(args_dict) 
+    logger.info("DeepXpert args: %s", args)
+    return DeepXpert(logger, vars(default_values([])), **args)
 
 app = FastAPI()
-args = None 
 logger = logging.getLogger()
 
-def init(args_dict:dict[str,any]):
-    global expert
-    args_dict = resolve_env_vars(args_dict)
-    default_args = vars(parse_args([]))
-    # Merge default_args with args, with args overriding default_args
-    args = default_args
-    args.update(args_dict)
-    log_level = getattr(logging, args["log"].upper(), logging.INFO)
-    logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
-    logger.info("Args: %s", args)
-    expert = Expert(logger, structure=CodingAdvice, **args)
+with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json"), "r") as f:
+    expert_config = json.load(f)
 
-# Load configuration from a JSON file
-knowledgexpert_conf = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json")
-config_path = knowledgexpert_conf if knowledgexpert_conf and os.path.isfile(knowledgexpert_conf) else "config.json"
-with open(config_path, "r") as f:
-    config = json.load(f)
+with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert", "config.json"), "r") as f:
+    deepxpert_config = json.load(f)
 
-init(config)
+init(expert_config, deepxpert_config)
 
 class QueryRequest(BaseModel):
     query: str
     session_id: str
 
-@app.post("/ask")
-def ask(request: QueryRequest):
-    logger.debug(f"Received query: {request.query}, session_id: {request.session_id}")
+def format_lower_camel_case(s: str) -> str:
+    # Tokenize by case boundary
+    tokens = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?![a-z])', s)
+    # Convert each token to upper camel case
+    tokens = [token.capitalize() for token in tokens]
+    # Join with space
+    return ' '.join(tokens)
+
+def format_analyst_output(analyst_output: AnalystOutput) -> str:
+    lines = []
+    for field, value in analyst_output.__dict__.items():
+        if value is None or value == '' or value == []:
+            continue
+        if field == 'references' and value:
+            lines.append(f"### {format_lower_camel_case(field)}:\n" + '\n'.join(f"- {ref}" for ref in value))
+        else:
+            lines.append(f"### {format_lower_camel_case(field)}:\n\n")
+            lines.append(f"{value}")
+    return '\n\n'.join(lines)
+
+def format_coder_output(coding_output: CodingOutput) -> str:
+    lines = []
+    for field, value in coding_output.__dict__.items():
+        if value is None or value == '' or value == []:
+            continue
+        if field == 'references' and value:
+            lines.append(f"### {format_lower_camel_case(field)}:\n" + '\n'.join(f"- {ref}" for ref in value))
+        elif field == 'code' and value:
+            lines.append(f"### {format_lower_camel_case(field)}:\n\n```python\n{value}\n```")
+        else:
+            lines.append(f"### {format_lower_camel_case(field)}:\n\n")
+            lines.append(f"{value}")
+    return '\n\n'.join(lines)
+
+def format_tester_output(tester_output: TestingOutput) -> str:
+    lines = []
+    for field, value in tester_output.__dict__.items():
+        if value is None or value == '' or value == []:
+            continue
+        if field == 'references' and value:
+            lines.append(f"### {format_lower_camel_case(field)}:\n" + '\n'.join(f"- {ref}" for ref in value))
+        elif field == 'content' and value:
+            # value is a list of TestFileOutput
+            for file_output in value:
+                ext = os.path.splitext(file_output.fileName)[1].lower()
+                if ext == '.csv':
+                    codeblock = 'csv'
+                elif ext == '.json':
+                    codeblock = 'json'
+                else:
+                    codeblock = ''
+                lines.append(f"#### {file_output.fileName}\n\n```{codeblock}")
+                lines.append(f"{file_output.content}\n```")
+        else:
+            lines.append(f"### {format_lower_camel_case(field)}:\n\n")
+            lines.append(f"{value}")
+    return '\n\n'.join(lines)
+
+def format_file_writer_output(response:dict)->str:
+    files = sorted(response["files"])
+    return "### Written Files:\n\n" + '\n'.join(f"- `{file}`" for file in files)
+
+def format_response(response:dict)->str:
+    result = '## Analyst:\n\n'
+    result += format_analyst_output(response["analyst_output"])
+    if "developer_output" in response:
+        result += f"\n\n---\n\n## Coder:\n\n{format_coder_output(response["developer_output"])}"
+    if "tester_output" in response:
+        result += f"\n\n---\n\n## Tester:\n\n{format_tester_output(response["tester_output"])}" 
+    if "file_writer_output" in response:
+        result += f"\n\n---\n\n## File Writer:\n\n{format_file_writer_output(response["file_writer_output"])}"
+    return result
+
+@app.post("/ask/knowledgexpert")
+def ask_knowledgexpert(request: QueryRequest):
+    logger.debug(f"Received knowledgexpert query: {request.query}, session_id: {request.session_id}")
     result = expert.handle_question(request.query, request.session_id)
     logger.debug(f"handle_question result: {result}")
     return {"result": str(result)}
+
+@app.post("/ask/deepxpert")
+def ask_deepxpert(request: QueryRequest):
+    logger.debug(f"Received deepxpert query: {request.query}, session_id: {request.session_id}")
+    response = deep_expert.handle_request(request.query, request.session_id)
+    return {"result": format_response(response)}

@@ -28,7 +28,7 @@ def write_files_tool(directory: str, ruleset: str, file_name: str, code: str, ru
         test_dir = os.path.join(directory, 'test', 'vector', rule_name)
         os.makedirs(test_dir, exist_ok=True)
         for each in test_data:
-            file_name = each.filename
+            file_name = each.fileName
             full_path = os.path.join(test_dir, file_name)
             with open(full_path, "w") as f:
                 f.write(each.content)
@@ -37,21 +37,21 @@ def write_files_tool(directory: str, ruleset: str, file_name: str, code: str, ru
 
 write_files = StructuredTool.from_function(
     name="write_files",
-    description="Write rule, configuration, and tests to the workspace",
+    description="Write rule, configuration, and test data to the workspace",
     func=write_files_tool,
 )
 
 class DeepXpert:
-    def __init__(self, logger:Logger, default_args:dict, **kwargs):
+    def __init__(self, logger:Logger, args:dict, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
 
         if not os.path.exists(self.args.workspaceDir):
             os.makedirs(self.args.workspaceDir, exist_ok=True)
 
-        self.analyst = self._init_expert(logger, self.args.confDir, "analyst", default_args, structure=AnalystOutput)
-        self.developer = self._init_expert(logger, self.args.confDir, "developer", default_args, structure=CodingOutput)
-        self.tester = self._init_expert(logger, self.args.confDir, "tester", default_args, structure=TestingOutput)
+        self.analyst = self._init_expert(logger, self.args.confDir, "analyst", args, structure=AnalystOutput)
+        self.developer = self._init_expert(logger, self.args.confDir, "developer", args, structure=CodingOutput)
+        self.tester = self._init_expert(logger, self.args.confDir, "tester", args, structure=TestingOutput)
         self._setup_graph()
 
     def _setup_graph(self):
@@ -81,13 +81,13 @@ class DeepXpert:
         return state
     
     def developer_node(self, state):
-        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nCode-generation Requirements:\n{state["analyst_output"].codeGenRequirements}"
+        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nCode-generation Requirements:\n{state["analyst_output"].codeGenerationRequirements}"
         response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
         state["developer_output"] = response
         return state
     
     def tester_node(self, state):
-        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nTest-generation Requirements:\n{state["analyst_output"].testGenRequirements}"
+        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nTest-generation Requirements:\n{state["analyst_output"].testGenerationRequirements}"
         response = self.tester.handle_question(state["input"], state["user_name"], interactions=analyst_output)
         state["tester_output"] = response
     
@@ -124,9 +124,9 @@ class DeepXpert:
     def code_writer_tool_node(self, state):
         directory = getattr(self.args, "workspaceDir")
         ruleset = getattr(state.get("analyst_output", None), "ruleset", None)
-        file_name = getattr(state.get("developer_output", None), "filename", None)
+        file_name = getattr(state.get("developer_output", None), "fileName", None)
         code = getattr(state.get("developer_output", None), "code", None)
-        rule_name = getattr(state.get("developer_output", None), "rulename", None)
+        rule_name = getattr(state.get("developer_output", None), "ruleName", None)
         testdata = getattr(state.get("tester_output", None), "content", [])
         result = write_files.run({
             "directory": directory,

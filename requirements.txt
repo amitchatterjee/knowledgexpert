@@ -19,7 +19,10 @@ langgraph
 datasets
 einops
 optimum[onnxruntime]
+mcp
+fastmcp
+langchain-mcp-adapters[all]
 
-# Temporary workaround
+# Temporary workaround - this is a bit of a mess because httpx 0.28.0 is required by fastmcp and anthropic won't work with it
 httpx==0.27.2 
 anthropic==0.38.0
