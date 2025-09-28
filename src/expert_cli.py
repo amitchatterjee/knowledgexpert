@@ -25,7 +25,7 @@ def print_structured_output(out, console):
         for i in range(len(out.references)):
             console.print(f"{i+1}: {out.references[i]}")
 
-def serve_cli(expert):
+def serve_cli(expert, interactions):
     console = Console()
     name = os.environ.get("USER") or os.environ.get("USERNAME") or "user"
     console.print("Knowledgenet assistant (Graph + Vector RAG). Type 'exit' to quit.")
@@ -37,7 +37,7 @@ def serve_cli(expert):
         if not user_query:
             continue
         console.print('The assistant is collecting information and processing them to come up with an answer...')
-        out = expert.handle_question(user_query, name)
+        out = expert.handle_question(user_query, name, interactions)
         console.print("Knowledge Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(out)
 
@@ -90,11 +90,14 @@ def parse_args(args_list=None):
    
     parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/expert)")
 
+    parser.add_argument("--interactions", default=None, help="A string that is used to pass on additional interaction details (default: '')")
+
     parser.add_argument("--disableHistory", action="store_true", help="Disable message history for the assistant (default: False)")
 
     parser.add_argument("--confDir", default=None, help="Directory containing config.json for base configuration (optional)")
 
     parser.add_argument("--structureClass", default="knowledgexpert.structures.CodingAdvice", help="Fully qualified class name for structure (default: knowledgexpert.structures.CodingAdvice)")
+
     args = None
     if args_list is not None:
         args = parser.parse_args(args_list)
@@ -140,7 +143,7 @@ if __name__ == "__main__":
             merged_config[k] = v
         elif v is not None and not merged_config[k]:
             merged_config[k] = v
-    
+
     log_level = getattr(logging, merged_config["log"].upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger('knowledgexpert')
@@ -151,4 +154,4 @@ if __name__ == "__main__":
     structure_module = importlib.import_module(module_name)
     structure_class = getattr(structure_module, class_name)
     expert = Expert(logger, structure=structure_class, **merged_config)
-    serve_cli(expert)
+    serve_cli(expert, args.interactions)
