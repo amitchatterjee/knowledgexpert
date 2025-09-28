@@ -154,9 +154,20 @@ python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py --requestPath $KNOWLEDGEXPERT_H
 
 ```
 
-## Execute Knowledgexpert API
+## Execute Knowledgexpert API for VS Code
 ```bash
 uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src" --log-config ~/.knowledgexpert/conf/log-config.yaml
+
+```
+
+## Execute DeepXpert MCP
+```bash
+fastmcp run "$KNOWLEDGEXPERT_HOME/src/deepxpert_mcp.py" --transport http --port 9901 --host 0.0.0.0 --log-level INFO
+
+# For debugging/inspection, etc.
+fastmcp dev "$KNOWLEDGEXPERT_HOME/src/deepxpert_mcp.py"
+
+# The above will open a browser. Connect using STDIO transport
 
 ```
 

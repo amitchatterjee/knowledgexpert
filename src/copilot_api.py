@@ -112,17 +112,17 @@ def format_tester_output(tester_output: TestingOutput) -> str:
 
 def format_file_writer_output(response:dict)->str:
     files = sorted(response["files"])
-    return "### Written Files:\n\n" + '\n'.join(f"- `{file}`" for file in files)
+    return "### Files Added/Updated:\n\n" + '\n'.join(f"- [{os.path.basename(file)}]({file})" for file in files)
 
 def format_response(response:dict)->str:
-    result = '## Analyst:\n\n'
+    result = '## Analyst Output:\n\n'
     result += format_analyst_output(response["analyst_output"])
     if "developer_output" in response:
-        result += f"\n\n---\n\n## Coder:\n\n{format_coder_output(response["developer_output"])}"
+        result += f"\n\n---\n\n## Developer Output:\n\n{format_coder_output(response["developer_output"])}"
     if "tester_output" in response:
-        result += f"\n\n---\n\n## Tester:\n\n{format_tester_output(response["tester_output"])}" 
+        result += f"\n\n---\n\n## Tester Output:\n\n{format_tester_output(response["tester_output"])}" 
     if "file_writer_output" in response:
-        result += f"\n\n---\n\n## File Writer:\n\n{format_file_writer_output(response["file_writer_output"])}"
+        result += f"\n\n---\n\n## File Writer Tool Output:\n\n{format_file_writer_output(response["file_writer_output"])}"
     return result
 
 @app.post("/ask/knowledgexpert")

@@ -19,15 +19,15 @@ class AnalystOutput(BaseModel):
         return f"{'\n\n'.join(fields)}"
 
 class CodingOutput(BaseModel):
-    summary: Optional[str] = Field("A one-line summary of the code snippet")
-    description: Optional[str] = Field(
+    summary: Optional[str] = Field(default=None, description="A one-line summary of the code snippet")
+    description: Optional[str] = Field(default=None,
         description="Description of the code snippet")
     code: str = Field(description="A Python code for the rule")
     fileName: str = Field(description="Python file name. Don't include module name")
     ruleName: str = Field(description="Python function name for this rule")
-    explanation: Optional[str] = Field(
+    explanation: Optional[str] = Field(default=None, 
         description="Detailed explanation of the code")
-    references: Optional[list[str]] = Field(
+    references: Optional[list[str]] = Field(default=None,
         description="A list of URLs containing more information")
     
     def __str__(self):
@@ -66,14 +66,11 @@ class TestingOutput(BaseModel):
 
 
 class CodingAdvice(BaseModel):
-    summary: Optional[str] = Field("A one-line summary of the code snippet")
-    description: Optional[str] = Field(
-        description="Description of the code snippet")
+    summary: Optional[str] = Field(default=None, description="A one-line summary of the code snippet")
+    description: Optional[str] = Field(default=None, description="Description of the code snippet")
     code: str = Field(description="A Python Code Snippet")
-    explanation: Optional[str] = Field(
-        description="Detailed explanation of the code")
-    references: Optional[list[str]] = Field(
-        description="A list of URLs containing more information")
+    explanation: Optional[str] = Field(default=None, description="Detailed explanation of the code")
+    references: Optional[list[str]] = Field(default=None, description="A list of URLs containing more information")
 
     def __str__(self):
         fields = []
