@@ -122,6 +122,9 @@ class DeepXpert:
             (lambda state: state))
     
     def code_writer_tool_node(self, state):
+        if getattr(self.args, "skipWriter", False):
+            state["file_writer_output"] = {"skipped": True}
+            return state
         directory = getattr(self.args, "workspaceDir")
         ruleset = getattr(state.get("analyst_output", None), "ruleset", None)
         file_name = getattr(state.get("developer_output", None), "fileName", None)

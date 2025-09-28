@@ -43,7 +43,7 @@ logger = logging.getLogger()
 with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json"), "r") as f:
     expert_config = json.load(f)
 
-with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert", "config.json"), "r") as f:
+with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert", "config-copilot.json"), "r") as f:
     deepxpert_config = json.load(f)
 
 init(expert_config, deepxpert_config)

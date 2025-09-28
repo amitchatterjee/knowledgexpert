@@ -2,14 +2,14 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 class AnalystOutput(BaseModel):
-    summary: str
-    classification: str
-    codeGenerationRequirements: str
-    ruleset: str = Field(description="Suggested ruleset name")
-    configGenerationRequirements: str
-    testGenerationRequirements: str
-    analysis: str
-    references: Optional[list[str]]
+    summary: str = Field(description="Summary of the analyst's response")
+    classification: str = Field(description="Classification of the request")
+    codeGenerationRequirements: str = Field(description="Rule code generation requirements, if applicable")
+    ruleset: str = Field(description="Ruleset name")
+    configGenerationRequirements: str = Field(description="Configuration generation requirements, if applicable")
+    testGenerationRequirements: str = Field(description="Test case generation requirements, if applicable")
+    analysis: str = Field(description="Details of the analysis")
+    references: Optional[list[str]] = Field(description="References used to create the analysis")
 
     def __str__(self):
         fields = []

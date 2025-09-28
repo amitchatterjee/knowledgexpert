@@ -32,7 +32,7 @@ def init_deep_expert(args_dict):
 logger = logging.getLogger()
 
 # Load config for DeepXpert
-with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert", "config.json"), "r") as f:
+with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert", "config-mcp.json"), "r") as f:
     deepxpert_config = json.load(f)
 
 deep_expert = init_deep_expert(deepxpert_config)

@@ -11,6 +11,7 @@ def parse_args(args_list=None):
     parser.add_argument("--confDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert"), help="Directory containing configurations (default: ~/.knowledgexpert/conf/deep-expert)")
     parser.add_argument("--workspaceDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "workspace", "deep-expert"), help="Directory for workspace (default: ~/.knowledgexpert/workspace/deep-expert)")
     parser.add_argument('--requestPath', type=str, default=None, help='Path to file containing the request/query')
+    parser.add_argument('--skipWriter', action='store_true', help='Skip writing files to disk (default: False)')
     if args_list is not None:
         return parser.parse_args(args_list)
     else:
