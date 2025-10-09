@@ -41,7 +41,7 @@ write_files = StructuredTool.from_function(
     func=write_files_tool,
 )
 
-class DeepXpert:
+class Team:
     def __init__(self, logger:Logger, args:dict, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger

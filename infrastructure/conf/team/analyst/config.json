@@ -1,8 +1,8 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/developer",
+    "promptDir": "${HOME}/.knowledgexpert/conf/team/analyst",
 
-    "llmModel": "gpt-4.1-mini",
-    "llmApiEndpoint": "https://api.openai.com/v1",
+    "llmModel": "anthropic:claude-sonnet-4-20250514",
+    "llmApiEndpoint": "https://api.anthropic.com",
 
     "embeddings": [
         {
@@ -23,27 +23,30 @@
     "chromaPort": 8000,
     "baseCollections": [
         {
-            "collectionName": "app_platform_collection",
+            "collectionName": "rules_collection",
             "searchAlgorithm": "similarity",
+            "k": 3,
             "embeddingId": "code"
         },
         {
-            "collectionName": "rules_collection",
-            "searchAlgorithm": "similarity",
-            "embeddingId": "code"
+            "collectionName": "app_docs_collection",
+            "searchAlgorithm": "mmr",
+            "k": 5,
+            "embeddingId": "doc"
+        },
+        {
+            "collectionName": "framework_docs_collection",
+            "searchAlgorithm": "mmr",
+            "k": 3,
+            "embeddingId": "doc"
         }],
-    "ensembleWeights": [0.25, 0.75],
+    "ensembleWeights": [0.1, 0.8, 0.1],
 
     "format": "structured",
+
     "contextPaths": [],
     
     "useGraphRag": false,
-    "neo4jUri": "bolt://localhost:7687",
-    "neo4jUser": "neo4j",
-    "neo4jPassword": "password",
-
-    "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
-    "graphLlmApiEndpoint": "https://api.anthropic.com",
 
     "verbose": false,
     "disableHistory": true

@@ -1,6 +1,6 @@
 {
 	"servers": {
-		"deepXpert": {
+		"knowledgeTeam": {
 			"url": "http://localhost:9901/mcp",
 			"type": "http"
 		}

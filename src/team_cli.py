@@ -1,15 +1,15 @@
 import logging
 import argparse
 
-from knowledgexpert.deepxpert import DeepXpert
+from knowledgexpert.team import Team
 from expert_cli import parse_args as default_values
 import os
 
 def parse_args(args_list=None):
-    parser = argparse.ArgumentParser(description="DeepXpert LLM Assistant")
+    parser = argparse.ArgumentParser(description="Team LLM Assistant")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
-    parser.add_argument("--confDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "deep-expert"), help="Directory containing configurations (default: ~/.knowledgexpert/conf/deep-expert)")
-    parser.add_argument("--workspaceDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "workspace", "deep-expert"), help="Directory for workspace (default: ~/.knowledgexpert/workspace/deep-expert)")
+    parser.add_argument("--confDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "team"), help="Directory containing configurations (default: ~/.knowledgexpert/conf/team)")
+    parser.add_argument("--workspaceDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "workspace", "team"), help="Directory for workspace (default: ~/.knowledgexpert/workspace/team)")
     parser.add_argument('--requestPath', type=str, default=None, help='Path to file containing the request/query')
     parser.add_argument('--skipWriter', action='store_true', help='Skip writing files to disk (default: False)')
     if args_list is not None:
@@ -34,5 +34,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger("DeepExpert")
     dict_args = vars(args)
-    graph = DeepXpert(logger, vars(default_values([])), **dict_args)
+    graph = Team(logger, vars(default_values([])), **dict_args)
     process(args, logger, graph)

@@ -1,8 +1,8 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/deep-expert/analyst",
+    "promptDir": "${HOME}/.knowledgexpert/conf/team/tester",
 
-    "llmModel": "anthropic:claude-sonnet-4-20250514",
-    "llmApiEndpoint": "https://api.anthropic.com",
+    "llmModel": "gpt-4.1-mini",
+    "llmApiEndpoint": "https://api.openai.com/v1",
 
     "embeddings": [
         {
@@ -23,31 +23,17 @@
     "chromaPort": 8000,
     "baseCollections": [
         {
-            "collectionName": "rules_collection",
-            "searchAlgorithm": "similarity",
-            "k": 3,
-            "embeddingId": "code"
-        },
-        {
             "collectionName": "app_docs_collection",
-            "searchAlgorithm": "mmr",
-            "k": 5,
-            "embeddingId": "doc"
-        },
-        {
-            "collectionName": "framework_docs_collection",
-            "searchAlgorithm": "mmr",
-            "k": 3,
+            "searchAlgorithm": "similarity",
             "embeddingId": "doc"
         }],
-    "ensembleWeights": [0.1, 0.8, 0.1],
+    "ensembleWeights": [1],
 
     "format": "structured",
-
     "contextPaths": [],
     
     "useGraphRag": false,
-
+ 
     "verbose": false,
     "disableHistory": true
 }

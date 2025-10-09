@@ -94,7 +94,7 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
     --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
 
-# DeepXpert vector stores
+# Team vector stores
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;entities.py,util.py;class:code,subclass:application,category:application" \
     --embeddingApiUrl "https://api.openai.com/v1/embeddings"  --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' \
@@ -144,10 +144,10 @@ python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhos
 ###############################################
 python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/expert --structureClass 'knowledgexpert.structures.CodingOutput'
 
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/deep-expert/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/team/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
 
 # This example demonstrates how to use --interactions to pass information from one expert to another
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/deep-expert/developer --structureClass 'knowledgexpert.structures.CodingOutput' --interactions "$(cat << EOF
+python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/team/developer --structureClass 'knowledgexpert.structures.CodingOutput' --interactions "$(cat << EOF
 Analysis:
    This is a contract validation rule that enforces age restrictions for insurance claims. The rule needs to:
    1. Access the ExecutionContext to get driver information
@@ -165,13 +165,13 @@ EOF
 
 ```
 
-## Execute DeepXpert CLI
+## Execute Team CLI
 ```bash
 
 # Interactive
-python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py
+python $KNOWLEDGEXPERT_HOME/src/team_cli.py
 
-python $KNOWLEDGEXPERT_HOME/src/deepxpert_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/request/underage_rule_request.txt
+python $KNOWLEDGEXPERT_HOME/src/team_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/request/underage_rule_request.txt
 
 ```
 
@@ -181,12 +181,12 @@ uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HO
 
 ```
 
-## Execute DeepXpert MCP
+## Execute Team MCP
 ```bash
-fastmcp run "$KNOWLEDGEXPERT_HOME/src/deepxpert_mcp.py" --transport http --port 9901 --host 0.0.0.0 --log-level INFO --
+fastmcp run "$KNOWLEDGEXPERT_HOME/src/team_mcp.py" --transport http --port 9901 --host 0.0.0.0 --log-level INFO --
 
 # For debugging/inspection, etc.
-fastmcp dev "$KNOWLEDGEXPERT_HOME/src/deepxpert_mcp.py"
+fastmcp dev "$KNOWLEDGEXPERT_HOME/src/team_mcp.py"
 
 # The above command will open a browser and display the inspector. Connect using STDIO transport.
 
