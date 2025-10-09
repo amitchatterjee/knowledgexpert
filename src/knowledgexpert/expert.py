@@ -55,7 +55,7 @@ class Expert:
         self.graph_chain = self._setup_graph_chain(
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
-        self.rag_chain = self._setup_vector_chain(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
+        self.rag_chain = self._setup_vector_chain(self.args.skipVectorSearch, self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         if getattr(self.args, "disableHistory", False):
             self.chat = self.rag_chain
@@ -134,9 +134,8 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format):
-        # Setup base retriever
-        base_retriever = self._setup_vector_stores(
+    def _setup_vector_chain(self, skip_vector_search, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format):
+        base_retriever = None if skip_vector_search else self._setup_vector_stores(
             chroma_host=chroma_host,
             chroma_port=chroma_port,
             base_collections=base_collections,
@@ -163,7 +162,7 @@ class Expert:
         params = {
             "interactions": RunnableLambda(lambda x: x["interactions"] if "interactions" in x else "None"),
             "graph_context": RunnableLambda(lambda x: x["graph_context"] if "graph_context" in x else "None"),
-            "context": RunnableLambda(lambda x: x["input"]) | base_retriever | self._format_docs,
+            "context": (RunnableLambda(lambda x: x["input"]) | base_retriever | self._format_docs) if base_retriever else RunnableLambda(lambda x: x),
             "input": RunnableLambda(lambda x: x["input"]),
             "history": lambda x: x.get("history", []),
         }

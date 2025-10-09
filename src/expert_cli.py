@@ -69,7 +69,6 @@ def parse_args(args_list=None):
     parser.add_argument("--scoreThreshold", type=float, default=None, help="Default score threshold for similarity_score_threshold search (optional)")
     parser.add_argument("--k", type=int, default=None, help="Default k (nearest neighbor) value")
 
-
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured' (default: structured)")
 
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
@@ -83,9 +82,11 @@ def parse_args(args_list=None):
     parser.add_argument("--neo4jDatabase", type=str, default="neo4j", help="Neo4j database name (default: neo4j)")
     parser.add_argument("--graphLlmModel", default=None, type=str, help="Graph LLM model (langchain convention).")
     parser.add_argument("--graphLlmApiEndpoint", default=None, type=str, help="Graph LLM API endpoint.")
-    parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output from rag chain.")
 
+    parser.add_argument("--useGraphRag", action="store_true", help="Enable graph RAG chain (default: False)")
+    parser.add_argument("--skipVectorSearch", action="store_true", help="Skip vector database retrieval and send the prompt directly to the LLM (default: False)")
+
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output from rag chain.")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
    
     parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/expert)")
