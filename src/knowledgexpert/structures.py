@@ -78,3 +78,12 @@ class CodingAdvice(BaseModel):
             if value is not None and value != "" and value != []:
                 fields.append(f"{field}:\n{value}")
         return f"{'\n\n'.join(fields)}"
+
+def ScholarOutput(BaseModel):
+    summary: Optional[str] = Field(default=None, description="A one-line summary of the findings")
+    description: Optional[str] = Field(default=None,
+        description="Description of the findings")
+    explanation: Optional[str] = Field(default=None, 
+        description="Detailed explanation of the findings")
+    references: Optional[list[str]] = Field(default=None,
+        description="A list of URLs containing the sources from where the findings were derived")

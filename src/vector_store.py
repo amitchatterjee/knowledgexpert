@@ -58,15 +58,15 @@ def main(args):
     txt_splitter = TokenTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     doc_chunks = []
     for each in all_docs:
-        chunk = create_chunks(each, py_splitter=py_splitter, md_splitter=md_splitter, txt_splitter=txt_splitter)
+        chunks = create_chunks(each, py_splitter=py_splitter, md_splitter=md_splitter, txt_splitter=txt_splitter)
         # Add chunk_index to each chunk's metadata
-        for idx, doc_chunk in enumerate(chunk):
+        for idx, doc_chunk in enumerate(chunks):
             if not hasattr(doc_chunk, 'metadata'):
                 doc_chunk.metadata = {}
             doc_chunk.metadata['chunk_index'] = idx
         if args.print:
-            print_chunk_info(chunk)
-        doc_chunks.extend(chunk)
+            print_chunk_info(chunks)
+        doc_chunks.extend(chunks)
     if args.store:
         chroma_client = chromadb.HttpClient(host=args.chromaHost, port=args.chromaPort)
         if args.clear:
@@ -90,8 +90,8 @@ def main(args):
             ids.extend(batch_ids)
         logger.info(f"Stored {len(ids)} chunks in collection '{args.collectionName}'.")
 
-def print_chunk_info(chunk):
-    for doc_chunk in chunk:
+def print_chunk_info(chunks):
+    for doc_chunk in chunks:
         print(f"Source: {doc_chunk.metadata.get('source', '')}")
         print(f"Metadata: {doc_chunk.metadata}")
         print(f"Content:\n{getattr(doc_chunk, 'page_content', '')}\n{'-'*60}")
