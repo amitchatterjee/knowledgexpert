@@ -1,9 +1,9 @@
 import logging
 import argparse
+import os
 
 from knowledgexpert.team import Team
 from expert_cli import parse_args as default_values
-import os
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="Team LLM Assistant")
@@ -17,14 +17,14 @@ def parse_args(args_list=None):
     else:
         return parser.parse_args()
 
-def process(args, logger, graph):
+def process(args, logger, expert):
     if getattr(args, 'requestPath', None):
         with open(args.requestPath, 'r', encoding='utf-8') as f:
             user_query = f.read().strip()
     else:
         user_query = input("Enter your question/request: ")
     name = os.environ.get("USER", "Unknown")
-    response = graph.handle_request(user_query, name)
+    response = expert.handle_request(user_query, name)
     for key, value in response.items():
         print(f"{key}:\n{'-'*20}\n{value}\n")
 
@@ -34,5 +34,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger("DeepExpert")
     dict_args = vars(args)
-    graph = Team(logger, vars(default_values([])), **dict_args)
-    process(args, logger, graph)
+    expert = Team(logger, vars(default_values([])), **dict_args)
+    process(args, logger, expert)

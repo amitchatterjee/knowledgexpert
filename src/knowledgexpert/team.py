@@ -42,16 +42,16 @@ write_files = StructuredTool.from_function(
 )
 
 class Team:
-    def __init__(self, logger:Logger, args:dict, **kwargs):
+    def __init__(self, logger:Logger, expert_default_args:dict, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
 
         if not os.path.exists(self.args.workspaceDir):
             os.makedirs(self.args.workspaceDir, exist_ok=True)
 
-        self.analyst = self._init_expert(logger, self.args.confDir, "analyst", args, structure=AnalystOutput)
-        self.developer = self._init_expert(logger, self.args.confDir, "developer", args, structure=CodingOutput)
-        self.tester = self._init_expert(logger, self.args.confDir, "tester", args, structure=TestingOutput)
+        self.analyst = self._init_expert(logger, self.args.confDir, "analyst", expert_default_args, structure=AnalystOutput)
+        self.developer = self._init_expert(logger, self.args.confDir, "developer", expert_default_args, structure=CodingOutput)
+        self.tester = self._init_expert(logger, self.args.confDir, "tester", expert_default_args, structure=TestingOutput)
         self._setup_graph()
 
     def _setup_graph(self):

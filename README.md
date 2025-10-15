@@ -175,6 +175,12 @@ python $KNOWLEDGEXPERT_HOME/src/team_cli.py --requestPath $KNOWLEDGEXPERT_HOME/b
 
 ```
 
+## Execute Bookworm CLI
+```bash
+python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOME/infrastructure/doc;*.md"
+
+```
+
 ## Execute Knowledgexpert API for VS Code
 ```bash
 uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src" --log-config ~/.knowledgexpert/conf/log-config.yaml

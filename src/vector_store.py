@@ -8,10 +8,11 @@ from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, 
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from knowledgexpert.chunker import create_chunks
 from knowledgexpert.util import embedding_mapper, setup_embedding
+from knowledgexpert.html_splitter import HTMLTextSplitter
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
-    parser.add_argument("--documents", nargs='+', type=str, help="List of documents to process. This arg must be in the format: dir_path;key1:val1,key2:val2,... The system will process all files of type - python and md located under the directory specified by dir_path", default=[])
+    parser.add_argument("--documents", nargs='+', type=str, help="List of documents to process. This arg must be in the format: dir_path;glob_pattern;key1:val1,key2:val2,... The system will process all files of type - python and md, located under the directory specified by dir_path", default=[])
     parser.add_argument("--chunkSize", type=int, default=2000, help="Chunk size for splitters (tokens)")
     parser.add_argument("--chunkOverlap", type=int, default=200, help="Chunk overlap for splitters (tokens)")
     parser.add_argument("--log", type=str, default="INFO", help="Log severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
@@ -56,9 +57,10 @@ def main(args):
     py_splitter = PythonCodeTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     md_splitter = MarkdownTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     txt_splitter = TokenTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
+    html_splitter = HTMLTextSplitter(chunk_size=args.chunkSize, chunk_overlap=args.chunkOverlap)
     doc_chunks = []
     for each in all_docs:
-        chunks = create_chunks(each, py_splitter=py_splitter, md_splitter=md_splitter, txt_splitter=txt_splitter)
+        chunks = create_chunks(each, py_splitter=py_splitter, md_splitter=md_splitter, txt_splitter=txt_splitter, html_splitter=html_splitter)
         # Add chunk_index to each chunk's metadata
         for idx, doc_chunk in enumerate(chunks):
             if not hasattr(doc_chunk, 'metadata'):

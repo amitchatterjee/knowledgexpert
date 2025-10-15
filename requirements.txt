@@ -24,3 +24,4 @@ fastmcp
 langchain-mcp-adapters[all]
 httpx
 anthropic
+unstructured
