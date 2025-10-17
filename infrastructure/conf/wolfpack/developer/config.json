@@ -1,5 +1,5 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/team/tester",
+    "promptDir": "${HOME}/.knowledgexpert/conf/wolfpack/developer",
 
     "llmModel": "gpt-4.1-mini",
     "llmApiEndpoint": "https://api.openai.com/v1",
@@ -23,17 +23,28 @@
     "chromaPort": 8000,
     "baseCollections": [
         {
-            "collectionName": "app_docs_collection",
+            "collectionName": "app_platform_collection",
             "searchAlgorithm": "similarity",
-            "embeddingId": "doc"
+            "embeddingId": "code"
+        },
+        {
+            "collectionName": "rules_collection",
+            "searchAlgorithm": "similarity",
+            "embeddingId": "code"
         }],
-    "ensembleWeights": [1],
+    "ensembleWeights": [0.25, 0.75],
 
     "format": "structured",
     "contextPaths": [],
     
     "useGraphRag": false,
- 
+    "neo4jUri": "bolt://localhost:7687",
+    "neo4jUser": "neo4j",
+    "neo4jPassword": "password",
+
+    "graphLlmModel": "anthropic:claude-sonnet-4-20250514",
+    "graphLlmApiEndpoint": "https://api.anthropic.com",
+
     "verbose": false,
     "disableHistory": true
 }

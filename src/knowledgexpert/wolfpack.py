@@ -2,7 +2,6 @@ from argparse import Namespace
 import json
 from logging import Logger
 import os
-import re
 from typing import Any, Dict
 from langgraph.graph import StateGraph, END
 from langchain_core.runnables import RunnableLambda, RunnableBranch, RunnableParallel
@@ -41,7 +40,7 @@ write_files = StructuredTool.from_function(
     func=write_files_tool,
 )
 
-class Team:
+class Wolfpack:
     def __init__(self, logger:Logger, expert_default_args:dict, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
@@ -95,7 +94,7 @@ class Team:
         state["implementor_output"] = "I am not ready to configure yet"
         return state
 
-    def development_team_node(self, state):
+    def development_wolfpack_node(self, state):
         parallel = RunnableParallel(
             developer=self.developer_node,
             tester=self.tester_node,
@@ -107,7 +106,8 @@ class Team:
 
     def request_router_node(self, state):
         def classification(state):
-            #print(">>>>>>>>>>", state)
+            if type(state["analyst_output"]) == str:
+                raise Exception(f"Expecting AnalystOutput, got str: {state["analyst_output"]}")
             return state["analyst_output"].classification
 
         # Helper to chain a node with code_writer_tool
@@ -115,7 +115,7 @@ class Team:
             return RunnableLambda(node_func) | RunnableLambda(self.code_writer_tool_node)
 
         return RunnableBranch(
-            (lambda state: classification(state) == "code-generation-request", chain_with_code_writer(self.development_team_node)),
+            (lambda state: classification(state) == "code-generation-request", chain_with_code_writer(self.development_wolfpack_node)),
             (lambda state: classification(state) == "test-generation-request", chain_with_code_writer(self.tester_node)),
             (lambda state: classification(state) == "config-generation-request", chain_with_code_writer(self.implementor_node)),
             # default

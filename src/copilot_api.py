@@ -6,20 +6,20 @@ import logging
 import json
 import os
 import expert_cli
-import team_cli as team_cli
+import wolfpack_cli as wolfpack_cli
 from expert_cli import parse_args as default_values
-from knowledgexpert.team import Team
+from knowledgexpert.wolfpack import Wolfpack
 from knowledgexpert.expert import Expert
 from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
 
-def init(expert_args_dict:dict[str,any], team_args_dict:dict[str,any]):
-    global expert, team
+def init(expert_args_dict:dict[str,any], wolfpack_args_dict:dict[str,any]):
+    global expert, wolfpack
     log_level = logging.getLevelName(logger.getEffectiveLevel())
     expert = init_expert(expert_args_dict)
-    team = init_team(team_args_dict)
+    wolfpack = init_wolfpack(wolfpack_args_dict)
 
 def init_expert(args_dict):
     args_dict = resolve_env_vars(args_dict)
@@ -29,13 +29,13 @@ def init_expert(args_dict):
     logger.info("Expert args: %s", args)
     return Expert(logger, structure=None, **args)
 
-def init_team(args_dict):
+def init_wolfpack(args_dict):
     args_dict = resolve_env_vars(args_dict)
-    default_args = vars(team_cli.parse_args([]))
+    default_args = vars(wolfpack_cli.parse_args([]))
     args = default_args
     args.update(args_dict) 
-    logger.info("Team args: %s", args)
-    return Team(logger, vars(default_values([])), **args)
+    logger.info("Wolfpack args: %s", args)
+    return Wolfpack(logger, vars(default_values([])), **args)
 
 app = FastAPI()
 logger = logging.getLogger()
@@ -43,10 +43,10 @@ logger = logging.getLogger()
 with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json"), "r") as f:
     expert_config = json.load(f)
 
-with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "team", "config-copilot.json"), "r") as f:
-    team_config = json.load(f)
+with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "wolfpack", "config-copilot.json"), "r") as f:
+    wolfpack_config = json.load(f)
 
-init(expert_config, team_config)
+init(expert_config, wolfpack_config)
 
 class QueryRequest(BaseModel):
     query: str
@@ -132,8 +132,8 @@ def ask_knowledgexpert(request: QueryRequest):
     logger.debug(f"handle_question result: {result}")
     return {"result": str(result)}
 
-@app.post("/ask/knowledgeteam")
-def ask_team(request: QueryRequest):
-    logger.debug(f"Received team query: {request.query}, session_id: {request.session_id}")
-    response = team.handle_request(request.query, request.session_id)
+@app.post("/ask/wolfpack")
+def ask_wolfpack(request: QueryRequest):
+    logger.debug(f"Received wolfpack query: {request.query}, session_id: {request.session_id}")
+    response = wolfpack.handle_request(request.query, request.session_id)
     return {"result": format_response(response)}

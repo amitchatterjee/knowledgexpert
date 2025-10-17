@@ -1,5 +1,5 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/team/analyst",
+    "promptDir": "${HOME}/.knowledgexpert/conf/wolfpack/analyst",
 
     "llmModel": "anthropic:claude-sonnet-4-20250514",
     "llmApiEndpoint": "https://api.anthropic.com",

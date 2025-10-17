@@ -1,6 +1,6 @@
 {
 	"servers": {
-		"knowledgeTeam": {
+		"Wolfpack": {
 			"url": "http://localhost:9901/mcp",
 			"type": "http"
 		}
