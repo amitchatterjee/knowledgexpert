@@ -6,3 +6,7 @@ Create a rule that denies claims to drivers below the allowed minimum age by cre
 MCP Server:
 
 Invoke the Wolfpack MCP agent to Create a rule that denies claims to drivers below the allowed minimum age by creating a fact of type Action with appropriate parameters.The driver attributes are specified by the class: Driver. The attribute - dob, represents a date of birth and it must be used to compute the age of the driver. Read the minimum age from the ruleset_context fact as a configuration parameter. This is a mandatory attribute and should not have any default values.
+
+Bookworm:
+
+What are the liability insurance requirements for the states of North Carolina and Delaware?

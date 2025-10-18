@@ -68,25 +68,24 @@ class BookWorm:
                 docs = loader.load()
             self.logger.debug("Loaded %d document", len(docs))
             all_docs.extend(docs)
-        results = []
+        
 
         all_docs.sort(key=lambda doc: os.path.basename(doc.metadata["source"]))
 
+        results = []
         for doc in all_docs:
             chunks = create_chunks(([doc],{}), py_splitter=self.py_splitter, md_splitter=self.md_splitter, txt_splitter=self.txt_splitter, html_splitter=self.html_splitter)
-            relevant_findings=[]
             for chunk in chunks:
                 self.logger.debug(f"Processing chunk from {doc.metadata.get('source', '')}")
-                input = f"<documentSegment>\nDocument Segment:\n{chunk}</documentSegment>\n\n<relevantFindings>\nRelevant Findings:\n{self.format_list(relevant_findings)}<relevantFindings>\n\n"
+                input = f"<documentSection>\nDocument Section:\n{chunk}</documentSection>\n\n<answersFromOtherSections>\nAnswers from other sections:\n{self.format_list(results)}<answersFromOtherSections>\n\n"
                 result = self.expert.handle_question(user_query, name, interactions=input)
                 if result.informationFound:
-                    self.logger.debug(f"Found relevant information in chunk from {doc.metadata.get('source', '')}")
-                    relevant_findings.append(result.explanation)
+                    self.logger.debug(f"Found relevant information in chunk from: {doc.metadata.get('source', '')}. Information: {result.explanation}")
                     results.append(result)
         return results
     
     def format_list(self, l:list):
-        return '\n'.join([f"{idx+1}. {item}" for idx, item in enumerate(l)])
+        return '\n'.join([f"{idx+1}. {item.explanation}" for idx, item in enumerate(l)])
 
     def print_chunk_info(self, chunk):
         print(f"Source: {chunk.metadata.get('source', '')}")
