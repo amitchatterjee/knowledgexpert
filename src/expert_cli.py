@@ -1,9 +1,12 @@
+
 import os
 import logging
 from rich.console import Console
 import argparse
 import importlib
 import json
+from prompt_toolkit import prompt
+from prompt_toolkit.history import FileHistory
 
 from knowledgexpert.expert import Expert
 from knowledgexpert.util import resolve_env_vars, embedding_mapper
@@ -28,9 +31,19 @@ def print_structured_output(out, console):
 def serve_cli(expert, interactions):
     console = Console()
     name = os.environ.get("USER") or os.environ.get("USERNAME") or "user"
+    history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "expert.history")
+    try:
+        history_dir = os.path.dirname(history_file)
+        os.makedirs(history_dir, exist_ok=True)
+        if not os.path.exists(history_file):
+            open(history_file, "a").close()
+            logging.debug(f"Created history file at {history_file}")
+    except Exception as e:
+        logging.warning(f"Could not ensure history file {history_file}: {e}")
+    history = FileHistory(history_file)
     console.print("Knowledgenet assistant (Graph + Vector RAG). Type 'exit' to quit.")
     while True:
-        user_query = input(f"\n{name}:> ").strip()
+        user_query = prompt(f"\n{name}:> ", history=history).strip()
         if user_query.lower() in {"exit", "quit"}:
             console.print("Goodbye!")
             break

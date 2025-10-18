@@ -2,8 +2,11 @@ import logging
 import argparse
 import os
 
+
 from knowledgexpert.wolfpack import Wolfpack
 from expert_cli import parse_args as default_values
+from prompt_toolkit import prompt
+from prompt_toolkit.history import FileHistory
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="Wolfpack LLM Assistant")
@@ -22,7 +25,20 @@ def process(args, logger, expert):
         with open(args.requestPath, 'r', encoding='utf-8') as f:
             user_query = f.read().strip()
     else:
-        user_query = input("Enter your question/request: ")
+        history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "wolfpack.history")
+        try:
+            history_dir = os.path.dirname(history_file)
+            os.makedirs(history_dir, exist_ok=True)
+            if not os.path.exists(history_file):
+                open(history_file, "a").close()
+                logger.debug(f"Created history file at {history_file}")
+        except Exception as e:
+            logger.warning(f"Could not ensure history file {history_file}: {e}")
+        history = FileHistory(history_file)
+        user_query = prompt("Enter your question/request: ", history=history)
+        if not user_query or not user_query.strip():
+            print("No query provided, exiting.")
+            return
     name = os.environ.get("USER", "Unknown")
     response = expert.handle_request(user_query, name)
     for key, value in response.items():
@@ -32,7 +48,7 @@ if __name__ == "__main__":
     args = parse_args()
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
-    logger = logging.getLogger("DeepExpert")
+    logger = logging.getLogger("Wolfpack")
     dict_args = vars(args)
     expert = Wolfpack(logger, vars(default_values([])), **dict_args)
     process(args, logger, expert)

@@ -171,7 +171,7 @@ EOF
 # Interactive
 python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py
 
-python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/request/underage_rule_request.txt
+python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/wolfpack/prompt-1.txt
 
 ```
 

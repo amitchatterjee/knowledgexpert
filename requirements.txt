@@ -25,3 +25,4 @@ langchain-mcp-adapters[all]
 httpx
 anthropic
 unstructured
+prompt_toolkit

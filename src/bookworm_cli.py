@@ -1,6 +1,9 @@
+
 import logging
 import argparse
 import os
+from prompt_toolkit import prompt
+from prompt_toolkit.history import FileHistory
 
 from knowledgexpert.bookworm import BookWorm
 from expert_cli import parse_args as default_values
@@ -19,18 +22,36 @@ def parse_args(args_list=None):
         return parser.parse_args()
 
 def process(args, logger, bookworm):
-    user_query = input("Enter your question: ")
     name = os.environ.get("USER", "Unknown")
-    response = bookworm.handle_question(user_query, name, args.documents)
-    for idx, element in enumerate(response):
-        logger.debug(f"BookWormOutput[{idx}]:\n{element}")
-    print(response[-1] if len(response) > 0 else 'No information found')
+    history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "bookworm.history")
+    try:
+        history_dir = os.path.dirname(history_file)
+        os.makedirs(history_dir, exist_ok=True)
+        if not os.path.exists(history_file):
+            open(history_file, "a").close()
+            logger.debug(f"Created history file at {history_file}")
+    except Exception as e:
+        logger.warning(f"Could not ensure history file {history_file}: {e}")
+    history = FileHistory(history_file)
+    while True:
+        user_query = prompt(
+            "Enter your question (type 'exit' or 'quit' to leave): ",
+            history=history
+        )
+        if user_query.strip().lower() in ("exit", "quit"):
+            return
+        if not user_query.strip():
+            continue
+        response = bookworm.handle_question(user_query, name, args.documents)
+        for idx, element in enumerate(response):
+            logger.debug(f"BookWormOutput[{idx}]:\n{element}")
+        print(response[-1] if len(response) > 0 else 'No information found')
     
 if __name__ == "__main__":
     args = parse_args()
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
-    logger = logging.getLogger("BookWorm")
+    logger = logging.getLogger("Bookworm")
     dict_args = vars(args)
     bookworm = BookWorm(logger, vars(default_values([])), **dict_args)
     process(args, logger, bookworm)
