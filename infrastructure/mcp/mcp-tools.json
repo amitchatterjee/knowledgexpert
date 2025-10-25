@@ -1,0 +1,44 @@
+{
+  "tools": [
+    {
+      "name": "ListIndexTool",
+      "type": "ListIndexTool",
+      "description": "This tool gets index information from the OpenSearch cluster. It takes 2 optional arguments named `indices` which is a comma-delimited list of one or more indices to get information from (default is an empty list meaning all indices), and `local` which means whether to return information from the local node only instead of the cluster manager node (default is false). The tool returns the indices information, including `health`, `status`, `index`, `uuid`, `pri`, `rep`, `docs.count`, `docs.deleted`, `store.size`, `pri.store. size `, `pri.store.size`, `pri.store`.",
+      "attributes": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "indices": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "OpenSearch index name list, separated by comma. for example: [\"index1\", \"index2\"], use empty array [] to list all indices in the cluster"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "name": "SearchIndexTool",
+      "type": "SearchIndexTool",
+      "description": "Use this tool to search an index by providing two parameters: 'index' for the index name, and 'query' for the OpenSearch DSL formatted query. Only use this tool when both index name and DSL query is available.",
+      "attributes": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "index": {
+              "type": "string"
+            },
+            "query": {
+              "type": "string",
+              "description": "If you pass raw OpenSearch DSL here, consider changing the type to `object` and validating the structure."
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

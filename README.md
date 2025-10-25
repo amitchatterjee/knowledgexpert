@@ -37,6 +37,10 @@ export OPENAI_API_KEY=<openai_key>
 #export EMBEDDING_MODEL_DATA=msmarco-MiniLM-L6-v3
 export EMBEDDING_MODEL_DATA=BAAI/bge-m3
 export EMBEDDING_MODEL_CODE=BAAI/bge-m3
+
+# handle self-signed certs
+export NODE_TLS_REJECT_UNAUTHORIZED=0
+
 # Apply the changes immediately
 source ~/.bashrc
 ```
@@ -45,6 +49,12 @@ source ~/.bashrc
 ```bash   
 pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
 ```
+
+### Build docker container for opensearch
+```bash
+docker build -t opensearch-with-mcp:latest  -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/Dockerfile .
+```
+
 
 ## Setup the infrastructure components needed for this service
 
@@ -177,7 +187,7 @@ python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HO
 
 ## Execute Bookworm CLI
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOME/infrastructure/doc;*.md"
+python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOME/infrastructure/data/insurance-docs;*.md"
 
 ```
 
@@ -198,9 +208,75 @@ fastmcp dev "$KNOWLEDGEXPERT_HOME/src/wolfpack_mcp.py"
 
 ```
 
-## List the available models
+## List the available models on openai
 ```bash
 # Openai
 curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" | jq
+
+```
+
+## Setup opensearch MCP
+```bash
+
+# get available plugins
+curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSearch$2025'
+
+# get cluster settings
+curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025' --insecure
+
+curl -X POST 'https://localhost:9200/_plugins/_ml/agents/_register' \
+  --insecure \
+  -u 'admin:openSearch$2025' \
+  -H 'Content-Type: application/json' \
+  --data-binary @- <<'JSON'
+{
+  "name": "Test_Agent_For_ListIndex_tool",
+  "type": "flow",
+  "description": "this is a test agent for the ListIndexTool",
+  "tools": [
+    {
+      "type": "ListIndexTool",
+      "name": "DemoListIndexTool",
+      "parameters": {
+        "input": "${parameters.question}"
+      }
+    }
+  ]
+}
+JSON
+
+curl -X POST 'https://localhost:9200/_plugins/_ml/agents/_register' \
+  --insecure \
+  -u 'admin:openSearch$2025' \
+  -H 'Content-Type: application/json' \
+  --data-binary @- <<'JSON'
+{
+  "name": "Test_Agent_For_Search_Index_Tool",
+  "type": "flow",
+  "description": "this is a test for search index tool",
+  "memory": {
+    "type": "demo"
+  },
+  "tools": [
+    {
+      "type": "SearchIndexTool"
+    }
+  ]
+}
+JSON
+
+# Register the tool
+curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
+  --insecure \
+  -u 'admin:openSearch$2025' \
+  -H 'Content-Type: application/json' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/mcp-tools.json"
+
+# Load some data
+curl -sS -H "Content-Type: application/x-ndjson" \
+  -u 'admin:openSearch$2025' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/data/msrp/toyota-2025-msrp-bulk.ndjson" \
+  --insecure \
+  "https://localhost:9200/_bulk"
 
 ```

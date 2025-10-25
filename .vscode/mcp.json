@@ -3,7 +3,15 @@
 		"Wolfpack": {
 			"url": "http://localhost:9901/mcp",
 			"type": "http"
+		},
+		"AutoGeek": {
+			"type": "sse",
+			"url": "https://localhost:9200/_plugins/_ml/mcp",
+			"headers": {
+				"Authorization": "Basic YWRtaW46b3BlblNlYXJjaCQyMDI1"
+			}
 		}
 	},
-	"inputs": []
+	"inputs": [
+	]
 }

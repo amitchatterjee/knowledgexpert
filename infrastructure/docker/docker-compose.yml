@@ -43,18 +43,30 @@ services:
       - huggingface_data:/data
     restart: unless-stopped
 
-  # huggingface-embeddings-code:
-  #     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
-  #     container_name: huggingface-embeddings-code
-  #     ports:
-  #       - "9090:80"
-  #     environment:
-  #       - HF_TOKEN=${HF_TOKEN}
-  #       - DEVICE=cpu
-  #       - MODEL_ID=${EMBEDDING_MODEL_CODE:-nomic-ai/nomic-embed-code}
-  #     volumes:
-  #       - huggingface_code:/data
-  #     restart: unless-stopped
+  opensearch:
+    image: opensearch-with-mcp:latest 
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=openSearch$2025
+      - OPENSEARCH_JAVA_OPTS=-Xms512M -Xmx512M
+      - plugins.ml_commons.mcp_server_enabled=true
+      - plugins.ml_commons.mcp_connector_enabled=true
+      - plugins.ml_commons.trusted_connector_endpoints_regex=["^https?://localhost.*"]
+      - plugins.ml_commons.stream_enabled=true
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200 # REST API
+      #- 9600:9600 # Performance Analyzer
+
 
 volumes:
   ollama_data:
@@ -69,6 +81,6 @@ volumes:
   huggingface_data:
     driver: local
     name: huggingface_data
-  huggingface_code:
+  opensearch-data:
     driver: local
-    name: huggingface_code
+    name: opensearch-data
