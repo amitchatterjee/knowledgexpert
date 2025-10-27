@@ -1,4 +1,5 @@
 from argparse import Namespace
+import json
 import logging
 from logging import Logger
 import os
@@ -21,6 +22,8 @@ from langchain_community.graphs import Neo4jGraph
 from langchain.chains import GraphCypherQAChain
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langgraph.graph import StateGraph, END
+from langchain_mcp_adapters.client import MultiServerMCPClient
+import httpx
 
 from knowledgexpert.util import setup_embedding
 from knowledgexpert.util import setup_llm
@@ -55,6 +58,9 @@ class Expert:
         self.graph_chain = self._setup_graph_chain(
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
+        if self.args.mcpConfig:
+            tools = self._setup_mcp_tools(self.args.mcpConfig, self.args.mcpInsecure)
+
         self.rag_chain = self._setup_vector_chain(self.args.skipVectorSearch, self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
 
         if getattr(self.args, "disableHistory", False):
@@ -63,8 +69,20 @@ class Expert:
             self.chat = RunnableWithMessageHistory(
                 self.rag_chain, self._get_session_history, input_messages_key="input", history_messages_key="history")
 
-        # --- LangGraph workflow setup ---
         self._setup_workflow_graph()
+
+    async def _setup_mcp_tools(self, mcp_config, insecure: bool = False):
+        path = os.path.expanduser(mcp_config)
+        with open(path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        verify = False if insecure else True
+        http_client = httpx.AsyncClient(verify=verify)
+        try:
+            client = MultiServerMCPClient(config, http_client=http_client)
+            tools = await client.get_tools()
+        finally:
+            await http_client.aclose()
+        return tools
 
     def _format_docs(self, docs):
         if not docs:
@@ -134,7 +152,7 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, skip_vector_search, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format):
+    def _setup_vector_chain(self, skip_vector_search, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format, tools = None):
         base_retriever = None if skip_vector_search else self._setup_vector_stores(
             chroma_host=chroma_host,
             chroma_port=chroma_port,
@@ -146,7 +164,7 @@ class Expert:
         )
 
         llm = setup_llm(llm_model=llm_model,
-                        llm_api_endpoint=llm_api_endpoint, output_format=format)
+                        llm_api_endpoint=llm_api_endpoint, output_format=format, tools=tools)
 
         llm_prompt_path = os.path.join(self.prompt_dir, "vector_prompt.txt")
         with open(llm_prompt_path, "r", encoding="utf-8") as f:
@@ -156,9 +174,6 @@ class Expert:
         def coding_advice_to_json(obj):
             return obj.model_dump_json()
 
-        structured_llm = None
-        if format == "structured":
-            structured_llm = llm.with_structured_output(self.structure)
         params = {
             "interactions": RunnableLambda(lambda x: x["interactions"] if "interactions" in x else "None"),
             "graph_context": RunnableLambda(lambda x: x["graph_context"] if "graph_context" in x else "None"),
@@ -166,7 +181,8 @@ class Expert:
             "input": RunnableLambda(lambda x: x["input"]),
             "history": lambda x: x.get("history", []),
         }
-        if structured_llm:
+        if format == "structured":
+            structured_llm = llm.with_structured_output(self.structure)
             params["schema"] = lambda x: self.structure.schema_json()
             rag_chain = (
                 params

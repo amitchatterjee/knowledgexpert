@@ -224,53 +224,19 @@ curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSea
 # get cluster settings
 curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025' --insecure
 
-curl -X POST 'https://localhost:9200/_plugins/_ml/agents/_register' \
-  --insecure \
-  -u 'admin:openSearch$2025' \
-  -H 'Content-Type: application/json' \
-  --data-binary @- <<'JSON'
-{
-  "name": "Test_Agent_For_ListIndex_tool",
-  "type": "flow",
-  "description": "this is a test agent for the ListIndexTool",
-  "tools": [
-    {
-      "type": "ListIndexTool",
-      "name": "DemoListIndexTool",
-      "parameters": {
-        "input": "${parameters.question}"
-      }
-    }
-  ]
-}
-JSON
+# create agents
+curl --insecure \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-agent.ndjson" \
+  "https://localhost:9200/_plugins/_ml/agents/_register" \
+  -u 'admin:openSearch$2025'
 
-curl -X POST 'https://localhost:9200/_plugins/_ml/agents/_register' \
-  --insecure \
-  -u 'admin:openSearch$2025' \
-  -H 'Content-Type: application/json' \
-  --data-binary @- <<'JSON'
-{
-  "name": "Test_Agent_For_Search_Index_Tool",
-  "type": "flow",
-  "description": "this is a test for search index tool",
-  "memory": {
-    "type": "demo"
-  },
-  "tools": [
-    {
-      "type": "SearchIndexTool"
-    }
-  ]
-}
-JSON
-
-# Register the tool
+# register tools
 curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
   --insecure \
   -u 'admin:openSearch$2025' \
   -H 'Content-Type: application/json' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/mcp-tools.json"
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-mcp-tools.json"
 
 # Load some data
 curl -sS -H "Content-Type: application/x-ndjson" \

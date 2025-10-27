@@ -93,10 +93,10 @@ def is_text_file(filepath, blocksize=512):
         return False
 
 
-def setup_llm(llm_model, llm_api_endpoint, output_format):
+def setup_llm(llm_model, llm_api_endpoint, output_format, tools=None):
     model_provider = llm_model.split(":")[0]
     if model_provider == 'openai' or model_provider == 'ollama':
-        return init_chat_model(
+        model = init_chat_model(
             llm_model,
             base_url=llm_api_endpoint,
             temperature=0,
@@ -105,12 +105,13 @@ def setup_llm(llm_model, llm_api_endpoint, output_format):
                           } if output_format == "structured" else {},
         )
     else:
-        return init_chat_model(
+        model = init_chat_model(
             llm_model,
             base_url=llm_api_endpoint,
             temperature=0,
             streaming=True,
         )
+    return model.bind_tools(tools) if tools else model
 
 def embedding_mapper(embedding, def_embedding_provider, def_embedding_api_url, def_embedding_model):
     if embedding:

@@ -1,0 +1,2 @@
+{"name":"Agent_For_ListIndex_tool","type":"flow","description":"Agent for the ListIndexTool","tools":[{"type":"ListIndexTool","name":"ListIndexTool","parameters":{"input":"${parameters.question}"}}]}
+{"name":"Agent_For_Search_Index_Tool","type":"flow","description":"Agent for the search index tool","memory":{"type":"demo"},"tools":[{"type":"SearchIndexTool"}]}

@@ -87,6 +87,9 @@ def parse_args(args_list=None):
     parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
     parser.add_argument("--contextPathsEmbedding", default='default', help="Embedding id to use for files in the contextPaths")
 
+    parser.add_argument("--mcpConfig", default=None, help="Path to MCP config JSON file (optional). If provided, MCP tools will be loaded from this config.")
+    parser.add_argument("--mcpInsecure", action="store_true", help="If set, disable TLS verification when contacting MCP servers (useful for self-signed certs; insecure).")
+
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[], help="Weights for ensemble retriever (default: [])")
     
     parser.add_argument("--neo4jUri", type=str, default="bolt://localhost:7687", help="Neo4j connection URI.")

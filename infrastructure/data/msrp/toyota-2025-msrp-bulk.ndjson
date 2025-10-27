@@ -1,34 +1,34 @@
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-corolla-2025"}}
-{"doc": {"make": "Toyota", "model": "Corolla", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/corolla/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-corolla-cross-2025"}}
-{"doc": {"make": "Toyota", "model": "Corolla Cross", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/corollacross/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-camry-2025"}}
-{"doc": {"make": "Toyota", "model": "Camry", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/camry/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-prius-2025"}}
-{"doc": {"make": "Toyota", "model": "Prius", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/prius/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-prius-prime-2025"}}
-{"doc": {"make": "Toyota", "model": "Prius Prime", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/priusprime/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-rav4-2025"}}
-{"doc": {"make": "Toyota", "model": "RAV4", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/rav4/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-highlander-2025"}}
-{"doc": {"make": "Toyota", "model": "Highlander", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/highlander/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-venza-2025"}}
-{"doc": {"make": "Toyota", "model": "Venza", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/venza/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-crown-2025"}}
-{"doc": {"make": "Toyota", "model": "Crown", "year": 2025, "trim": "base", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/crown/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-4runner-2025"}}
-{"doc": {"make": "Toyota", "model": "4Runner", "year": 2025, "trim": "SR5 (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/4runner/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-sequoia-2025"}}
-{"doc": {"make": "Toyota", "model": "Sequoia", "year": 2025, "trim": "SR5 (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/sequoia/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-tacoma-2025"}}
-{"doc": {"make": "Toyota", "model": "Tacoma", "year": 2025, "trim": "SR (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/tacoma/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-tundra-2025"}}
-{"doc": {"make": "Toyota", "model": "Tundra", "year": 2025, "trim": "SR (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/tundra/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-sienna-2025"}}
-{"doc": {"make": "Toyota", "model": "Sienna", "year": 2025, "trim": "LE (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/sienna/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-supra-2025"}}
-{"doc": {"make": "Toyota", "model": "GR Supra", "year": 2025, "trim": "2.0 (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/supra/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-gr86-2025"}}
-{"doc": {"make": "Toyota", "model": "GR86", "year": 2025, "trim": "Premium (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/gr86/", "fetched_at": null}, "doc_as_upsert": true}
-{"update": {"_index": "msrp_2025_us", "_id": "toyota-bz4x-2025"}}
-{"doc": {"make": "Toyota", "model": "bZ4X", "year": 2025, "trim": "XLE (base)", "msrp": null, "currency": "USD", "market": "US", "source": "https://www.toyota.com/bz4x/", "fetched_at": null}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-corolla-2025"}}
+{"doc": {"make": "Toyota", "model": "Corolla", "year": 2025, "trim": "base", "msrp": 22600, "currency": "USD", "market": "US", "source": "https://www.toyota.com/corolla/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-corolla-cross-2025"}}
+{"doc": {"make": "Toyota", "model": "Corolla Cross", "year": 2025, "trim": "base", "msrp": 24350, "currency": "USD", "market": "US", "source": "https://www.toyota.com/corollacross/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-camry-2025"}}
+{"doc": {"make": "Toyota", "model": "Camry", "year": 2025, "trim": "base", "msrp": 27600, "currency": "USD", "market": "US", "source": "https://www.toyota.com/camry/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-prius-2025"}}
+{"doc": {"make": "Toyota", "model": "Prius", "year": 2025, "trim": "base", "msrp": 27900, "currency": "USD", "market": "US", "source": "https://www.toyota.com/prius/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-prius-prime-2025"}}
+{"doc": {"make": "Toyota", "model": "Prius Prime", "year": 2025, "trim": "base", "msrp": 33900, "currency": "USD", "market": "US", "source": "https://www.toyota.com/priusprime/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-rav4-2025"}}
+{"doc": {"make": "Toyota", "model": "RAV4", "year": 2025, "trim": "base", "msrp": 28000, "currency": "USD", "market": "US", "source": "https://www.toyota.com/rav4/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-highlander-2025"}}
+{"doc": {"make": "Toyota", "model": "Highlander", "year": 2025, "trim": "base", "msrp": 36900, "currency": "USD", "market": "US", "source": "https://www.toyota.com/highlander/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-venza-2025"}}
+{"doc": {"make": "Toyota", "model": "Venza", "year": 2025, "trim": "base", "msrp": 34000, "currency": "USD", "market": "US", "source": "https://www.toyota.com/venza/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-crown-2025"}}
+{"doc": {"make": "Toyota", "model": "Crown", "year": 2025, "trim": "base", "msrp": 43500, "currency": "USD", "market": "US", "source": "https://www.toyota.com/crown/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-4runner-2025"}}
+{"doc": {"make": "Toyota", "model": "4Runner", "year": 2025, "trim": "SR5 (base)", "msrp": 40500, "currency": "USD", "market": "US", "source": "https://www.toyota.com/4runner/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-sequoia-2025"}}
+{"doc": {"make": "Toyota", "model": "Sequoia", "year": 2025, "trim": "SR5 (base)", "msrp": 56900, "currency": "USD", "market": "US", "source": "https://www.toyota.com/sequoia/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-tacoma-2025"}}
+{"doc": {"make": "Toyota", "model": "Tacoma", "year": 2025, "trim": "SR (base)", "msrp": 29600, "currency": "USD", "market": "US", "source": "https://www.toyota.com/tacoma/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-tundra-2025"}}
+{"doc": {"make": "Toyota", "model": "Tundra", "year": 2025, "trim": "SR (base)", "msrp": 37700, "currency": "USD", "market": "US", "source": "https://www.toyota.com/tundra/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-sienna-2025"}}
+{"doc": {"make": "Toyota", "model": "Sienna", "year": 2025, "trim": "LE (base)", "msrp": 35700, "currency": "USD", "market": "US", "source": "https://www.toyota.com/sienna/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-supra-2025"}}
+{"doc": {"make": "Toyota", "model": "GR Supra", "year": 2025, "trim": "2.0 (base)", "msrp": 43000, "currency": "USD", "market": "US", "source": "https://www.toyota.com/supra/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-gr86-2025"}}
+{"doc": {"make": "Toyota", "model": "GR86", "year": 2025, "trim": "Premium (base)", "msrp": 32000, "currency": "USD", "market": "US", "source": "https://www.toyota.com/gr86/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}
+{"update": {"_index": "msrp", "_id": "toyota-bz4x-2025"}}
+{"doc": {"make": "Toyota", "model": "bZ4X", "year": 2025, "trim": "XLE (base)", "msrp": 43000, "currency": "USD", "market": "US", "source": "https://www.toyota.com/bz4x/", "fetched_at": "2025-10-26T00:00:00Z", "estimated": true}, "doc_as_upsert": true}

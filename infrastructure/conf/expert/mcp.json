@@ -1,6 +1,9 @@
 {
-    "opensearch": {
-        "transport": "http",
-        "url": "http://localhost:9099/mcp"
-    }
+    "AutoGeek": {
+        "type": "sse",
+        "url": "https://localhost:9200/_plugins/_ml/mcp",
+        "headers": {
+            "Authorization": "Basic YWRtaW46b3BlblNlYXJjaCQyMDI1"
+        }
+	}
 }
