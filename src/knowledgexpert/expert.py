@@ -5,7 +5,6 @@ from logging import Logger
 import os
 from typing import Any
 import chromadb
-
 import os
 
 from langchain_chroma import Chroma
@@ -24,6 +23,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from langgraph.graph import StateGraph, END
 from langchain_mcp_adapters.client import MultiServerMCPClient
 import httpx
+import asyncio
 
 from knowledgexpert.util import setup_embedding
 from knowledgexpert.util import setup_llm
@@ -59,9 +59,9 @@ class Expert:
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
         if self.args.mcpConfig:
-            tools = self._setup_mcp_tools(self.args.mcpConfig, self.args.mcpInsecure)
+            tools = asyncio.run(self._setup_mcp_tools(self.args.mcpConfig, insecure=self.args.mcpInsecure))
 
-        self.rag_chain = self._setup_vector_chain(self.args.skipVectorSearch, self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.llmModel, self.args.llmApiEndpoint, self.args.format)
+        self.rag_chain = self._setup_vector_chain(self.args.skipVectorSearch, self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.llmModel, self.args.llmApiEndpoint, self.args.format, tools)
 
         if getattr(self.args, "disableHistory", False):
             self.chat = self.rag_chain
@@ -73,15 +73,24 @@ class Expert:
 
     async def _setup_mcp_tools(self, mcp_config, insecure: bool = False):
         path = os.path.expanduser(mcp_config)
+        verify = False if insecure else True
+        if not verify:
+            self.logger.warning("TLS verification is disabled for MCP connections. This is insecure and should only be used for self-signed certificates.")
+
+        def httpx_client_factory(headers: dict[str, str] | None = None, timeout: httpx.Timeout | None = None, auth: httpx.Auth | None = None) -> httpx.AsyncClient:
+            client_headers = headers.copy() if headers else {}
+            return httpx.AsyncClient(verify=verify, headers=client_headers, timeout=timeout, auth=auth)
+
         with open(path, "r", encoding="utf-8") as f:
             config = json.load(f)
-        verify = False if insecure else True
-        http_client = httpx.AsyncClient(verify=verify)
-        try:
-            client = MultiServerMCPClient(config, http_client=http_client)
-            tools = await client.get_tools()
-        finally:
-            await http_client.aclose()
+
+        for v in config.values():
+            if v.get("transport") in ("streamable_http", "sse"):
+                v["httpx_client_factory"] = httpx_client_factory
+
+        client = MultiServerMCPClient(config)
+        tools = await client.get_tools()
+        self.logger.debug("Loaded tools based on configuration file: %s", mcp_config)
         return tools
 
     def _format_docs(self, docs):

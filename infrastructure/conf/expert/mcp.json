@@ -1,6 +1,6 @@
 {
     "AutoGeek": {
-        "type": "sse",
+        "transport": "streamable_http",
         "url": "https://localhost:9200/_plugins/_ml/mcp",
         "headers": {
             "Authorization": "Basic YWRtaW46b3BlblNlYXJjaCQyMDI1"
