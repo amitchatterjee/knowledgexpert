@@ -4,8 +4,8 @@
     "llmModel": "gpt-4.1-mini",
     "llmApiEndpoint": "https://api.openai.com/v1",
     
-    "mcpConfig": "${HOME}/.knowledgexpert/conf/expert/mcp.json",
-    "mcpInsecure": true,
+    "#mcpConfig": "${HOME}/.knowledgexpert/conf/expert/mcp.json",
+    "#mcpInsecure": true,
 
     "embeddings": [
         {

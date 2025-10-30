@@ -19,3 +19,16 @@ Chat History:
 User Question: 
 {input}
 </question>
+ 
+<tools>
+Tool Usage:
+When you need to call an external tool, output exactly one line in the following form:
+
+CALL_TOOL <TOOL_NAME> <JSON_PAYLOAD>
+
+The JSON payload MUST be valid JSON (no trailing commas or comments). The adapter expects the JSON to contain the named parameters for the tool. Example:
+
+CALL_TOOL SearchIndexTool {{"index":"my_index","query":"find this text","k":3}}
+
+Only emit the CALL_TOOL line when you intend the agent to call a tool; otherwise return a normal, helpful natural-language answer.
+</tools>

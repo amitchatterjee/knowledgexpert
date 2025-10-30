@@ -15,6 +15,8 @@ from langchain_core.runnables import RunnableLambda
 from langchain_community.chat_message_histories import FileChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain.agents import initialize_agent, AgentType
+from langchain.tools import Tool
 
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.graphs import Neo4jGraph
@@ -58,6 +60,7 @@ class Expert:
         self.graph_chain = self._setup_graph_chain(
             self.args.useGraphRag, self.args.neo4jUri, self.args.neo4jUser, self.args.neo4jPassword, self.args.neo4jDatabase, self.args.graphLlmModel, self.args.graphLlmApiEndpoint, self.args.verbose)
 
+        tools = None
         if self.args.mcpConfig:
             tools = asyncio.run(self._setup_mcp_tools(self.args.mcpConfig, insecure=self.args.mcpInsecure))
 
@@ -92,6 +95,46 @@ class Expert:
         tools = await client.get_tools()
         self.logger.debug("Loaded tools based on configuration file: %s", mcp_config)
         return tools
+
+    def _to_single_input_tool(self, original_tool):
+        """Wrap an MCP multi-argument tool into a single-input LangChain Tool.
+
+        The agent will pass a single string. We try to parse JSON from it to
+        obtain structured kwargs; otherwise we pass the raw text as {'input': text}.
+        """
+        # Derive name/description
+        name = getattr(original_tool, "name", None) or getattr(original_tool, "tool_name", "mcp_tool")
+        description = getattr(original_tool, "description", None) or f"MCP tool {name}"
+
+        def run_single_input(arg_str: str) -> str:
+            # Parse JSON payload. Parsing errors will propagate to the caller
+            # so the agent's malformed tool calls are visible and can be fixed.
+            payload = json.loads(arg_str)
+
+            # Prefer .run(**kwargs) if available; on TypeError try single-arg call.
+            if hasattr(original_tool, "run"):
+                try:
+                    return original_tool.run(**payload)
+                except TypeError:
+                    return original_tool.run(payload.get("input") or arg_str)
+
+            # Next try .invoke
+            if hasattr(original_tool, "invoke"):
+                try:
+                    return original_tool.invoke(**payload)
+                except TypeError:
+                    return original_tool.invoke(payload.get("input") or arg_str)
+
+            # Finally, if callable
+            if callable(original_tool):
+                try:
+                    return original_tool(**payload)
+                except TypeError:
+                    return original_tool(payload.get("input") or arg_str)
+
+            raise RuntimeError("Unsupported tool object; cannot call it")
+
+        return Tool(name=name, func=run_single_input, description=description)
 
     def _format_docs(self, docs):
         if not docs:
@@ -161,7 +204,7 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, skip_vector_search, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format, tools = None):
+    def _setup_vector_chain(self, skip_vector_search, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, llm_model, llm_api_endpoint, format, tools):
         base_retriever = None if skip_vector_search else self._setup_vector_stores(
             chroma_host=chroma_host,
             chroma_port=chroma_port,
@@ -193,18 +236,44 @@ class Expert:
         if format == "structured":
             structured_llm = llm.with_structured_output(self.structure)
             params["schema"] = lambda x: self.structure.schema_json()
+
+            executor_structured = structured_llm
+            if tools:
+                adapted_tools = [self._to_single_input_tool(t) for t in tools]
+                structured_agent = initialize_agent(
+                    adapted_tools,
+                    structured_llm,
+                    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                    verbose=self.args.verbose,
+                    handle_parsing_errors=True,
+                )
+                executor_structured = structured_agent
+                self.logger.debug("Initialized ReAct agent with structured LLM")
+
             rag_chain = (
                 params
                 | RunnableLambda(self._stop_if_no_context)
                 | RunnableLambda(lambda x: (self.log_prompt(x), x)[1])
-                | (prompt | structured_llm)
+                | (prompt | executor_structured)
                 | RunnableLambda(coding_advice_to_json)
             )
         else:
+            agent_executor = llm
+            if tools:
+                adapted_tools = [self._to_single_input_tool(t) for t in tools]
+                agent_executor = initialize_agent(
+                    adapted_tools,
+                    llm,
+                    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                    verbose=self.args.verbose,
+                    handle_parsing_errors=True,
+                )
+                self.logger.debug("Initialized ReAct agent with adapted MCP tools")
+                    
             rag_chain = (
                 params
                 | RunnableLambda(self._stop_if_no_context)
-                | (prompt | llm | StrOutputParser())
+                | (prompt | agent_executor | StrOutputParser())
             )
         return rag_chain
 
@@ -212,6 +281,39 @@ class Expert:
         if self.args.verbose:
             self.logger.info("Input for vector llm: %s", x)
         return None
+
+    def _invoke_rag_chain(self, payload: dict, session_id: str):
+        """Invoke the RAG/chat runnable with extra debug logging and propagate exceptions.
+
+        This helper logs the input, the raw output on success, and captures
+        additional debug information on exception (exception type, args and any
+        best-effort raw output found in the exception). It then re-raises the
+        exception so callers can decide how to handle it.
+        """
+        self.logger.debug("Invoking RAG chain. session_id=%s payload=%s", session_id, payload)
+        try:
+            out = self.chat.invoke(payload, config={"configurable": {"session_id": session_id}})
+            self.logger.debug("RAG chain returned: %s", out)
+            return out
+        except Exception as e:
+            # Log full traceback at error level for easier debugging
+            self.logger.exception("RAG chain invocation failed: %s", e)
+            # Best-effort extraction of raw output from exception
+            try:
+                raw = getattr(e, "raw_output", None)
+                if raw is None and e.args:
+                    for a in e.args:
+                        if isinstance(a, str) and len(a) > 0:
+                            # heuristics: if it looks like an LLM message, log it
+                            if "Could not parse" in a or "MSRP" in a or "LLM output" in a:
+                                raw = a
+                                break
+                if raw:
+                    self.logger.debug("Best-effort raw output from exception: %s", raw)
+            except Exception:
+                self.logger.exception("Error while extracting debug info from exception")
+            # Re-raise so upstream can handle/propagate as before
+            raise
 
     def _graph_rag_node(self, state):
         graph_context = ""
@@ -233,18 +335,23 @@ class Expert:
     def _vector_rag_node(self, state):
         self.logger.debug(f"Step 2: Querying vector RAG with graph context: %s", state.get("graph_context", ""))
         try:
-            out = self.chat.invoke({
+            out = self._invoke_rag_chain({
                 "input": state["input"],
                 "graph_context": state.get("graph_context", ""),
                 "interactions": state.get("interactions", "")
-            }, config={"configurable": {"session_id": state["user_name"]}})
+            }, session_id=state["user_name"])
+
             if self.args.format == "structured":
-                out = self.structure.model_validate_json(out)
+                try:
+                    out = self.structure.model_validate_json(out)
+                except ValueError as ve:
+                    # Log raw output for debugging and re-raise so caller sees the parsing error
+                    self.logger.exception("Structured output parsing failed while validating structured output. Raw output: %s", out)
+                    raise
+
             state["output"] = out
-        except ValueError as ve:
-            self.logger.error("Structured output parsing failed: %s. Showing raw output.", ve)
-            state["output"] = str(ve)
         except Exception as e:
+            # Log the exception and keep previous behavior of returning the error as output
             self.logger.error("Error during chain invocation: %s", e)
             state["output"] = str(e)
         self.logger.debug("Vector query output: %s", state["output"])
