@@ -7,7 +7,7 @@ from langchain_text_splitters import TokenTextSplitter
 from langchain_community.document_loaders import TextLoader, DirectoryLoader, UnstructuredHTMLLoader
 from knowledgexpert.expert import Expert
 from knowledgexpert.util import resolve_env_vars
-from langchain.text_splitter import MarkdownTextSplitter, PythonCodeTextSplitter
+from langchain_text_splitters import MarkdownTextSplitter, PythonCodeTextSplitter
 from knowledgexpert.chunker import create_chunks
 from knowledgexpert.structures import BookWormOutput
 from knowledgexpert.html_splitter import HTMLTextSplitter

@@ -135,6 +135,38 @@ python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "https://api.o
 
 ```
 
+## Setup opensearch MCP
+```bash
+
+# get available plugins
+curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSearch$2025'
+
+# get cluster settings
+curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025' --insecure
+
+# create agents
+curl --insecure \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-agent.ndjson" \
+  "https://localhost:9200/_plugins/_ml/agents/_register" \
+  -u 'admin:openSearch$2025'
+
+# register tools
+curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
+  --insecure \
+  -u 'admin:openSearch$2025' \
+  -H 'Content-Type: application/json' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-mcp-tools.json"
+
+# Load some data
+curl -sS -H "Content-Type: application/x-ndjson" \
+  -u 'admin:openSearch$2025' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/data/msrp/toyota-2025-msrp-bulk.ndjson" \
+  --insecure \
+  "https://localhost:9200/_bulk"
+
+```
+
 ## Execute Knowledgexpert cli
 ```bash
 ################################################
@@ -212,37 +244,5 @@ fastmcp dev "$KNOWLEDGEXPERT_HOME/src/wolfpack_mcp.py"
 ```bash
 # Openai
 curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" | jq
-
-```
-
-## Setup opensearch MCP
-```bash
-
-# get available plugins
-curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSearch$2025'
-
-# get cluster settings
-curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025' --insecure
-
-# create agents
-curl --insecure \
-  -H "Content-Type: application/x-ndjson" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-agent.ndjson" \
-  "https://localhost:9200/_plugins/_ml/agents/_register" \
-  -u 'admin:openSearch$2025'
-
-# register tools
-curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
-  --insecure \
-  -u 'admin:openSearch$2025' \
-  -H 'Content-Type: application/json' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-mcp-tools.json"
-
-# Load some data
-curl -sS -H "Content-Type: application/x-ndjson" \
-  -u 'admin:openSearch$2025' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/data/msrp/toyota-2025-msrp-bulk.ndjson" \
-  --insecure \
-  "https://localhost:9200/_bulk"
 
 ```
