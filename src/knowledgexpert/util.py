@@ -92,7 +92,7 @@ def is_text_file(filepath, blocksize=512):
         return False
 
 
-def setup_llm(llm_model, llm_api_endpoint, output_format, tools=None):
+def setup_llm(llm_model, llm_api_endpoint, output_format):
     model_provider = llm_model.split(":")[0]
     if model_provider == 'openai' or model_provider == 'ollama':
         model = init_chat_model(
@@ -110,7 +110,7 @@ def setup_llm(llm_model, llm_api_endpoint, output_format, tools=None):
             temperature=0,
             streaming=True,
         )
-    return model.bind_tools(tools) if tools else model
+    return model
 
 def embedding_mapper(embedding, def_embedding_provider, def_embedding_api_url, def_embedding_model):
     if embedding:

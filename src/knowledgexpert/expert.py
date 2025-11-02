@@ -15,7 +15,8 @@ from langchain_core.runnables import RunnableLambda
 from langchain_community.chat_message_histories import FileChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_classic.agents import initialize_agent, AgentType
+from langchain_classic.agents import AgentExecutor
+from langchain.agents import create_agent
 from langchain_classic.tools import Tool
 
 from langchain_classic.retrievers import EnsembleRetriever
@@ -95,46 +96,6 @@ class Expert:
         tools = await client.get_tools()
         self.logger.debug("Loaded tools based on configuration file: %s", mcp_config)
         return tools
-
-    def _to_single_input_tool(self, original_tool):
-        """Wrap an MCP multi-argument tool into a single-input LangChain Tool.
-
-        The agent will pass a single string. We try to parse JSON from it to
-        obtain structured kwargs; otherwise we pass the raw text as {'input': text}.
-        """
-        # Derive name/description
-        name = getattr(original_tool, "name", None) or getattr(original_tool, "tool_name", "mcp_tool")
-        description = getattr(original_tool, "description", None) or f"MCP tool {name}"
-
-        def run_single_input(arg_str: str) -> str:
-            # Parse JSON payload. Parsing errors will propagate to the caller
-            # so the agent's malformed tool calls are visible and can be fixed.
-            payload = json.loads(arg_str)
-
-            # Prefer .run(**kwargs) if available; on TypeError try single-arg call.
-            if hasattr(original_tool, "run"):
-                try:
-                    return original_tool.run(**payload)
-                except TypeError:
-                    return original_tool.run(payload.get("input") or arg_str)
-
-            # Next try .invoke
-            if hasattr(original_tool, "invoke"):
-                try:
-                    return original_tool.invoke(**payload)
-                except TypeError:
-                    return original_tool.invoke(payload.get("input") or arg_str)
-
-            # Finally, if callable
-            if callable(original_tool):
-                try:
-                    return original_tool(**payload)
-                except TypeError:
-                    return original_tool(payload.get("input") or arg_str)
-
-            raise RuntimeError("Unsupported tool object; cannot call it")
-
-        return Tool(name=name, func=run_single_input, description=description)
 
     def _format_docs(self, docs):
         if not docs:
@@ -216,7 +177,7 @@ class Expert:
         )
 
         llm = setup_llm(llm_model=llm_model,
-                        llm_api_endpoint=llm_api_endpoint, output_format=format, tools=tools)
+                        llm_api_endpoint=llm_api_endpoint, output_format=format)
 
         llm_prompt_path = os.path.join(self.prompt_dir, "vector_prompt.txt")
         with open(llm_prompt_path, "r", encoding="utf-8") as f:
@@ -239,15 +200,12 @@ class Expert:
 
             executor_structured = structured_llm
             if tools:
-                adapted_tools = [self._to_single_input_tool(t) for t in tools]
-                structured_agent = initialize_agent(
-                    adapted_tools,
-                    structured_llm,
-                    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-                    verbose=self.args.verbose,
-                    handle_parsing_errors=True,
+                agent_obj = create_agent(
+                    tools=tools,
+                    model=llm, 
+                    response_format=self.structure
                 )
-                executor_structured = structured_agent
+                executor_structured = AgentExecutor(agent=agent_obj, tools=tools, verbose=self.args.verbose)
                 self.logger.debug("Initialized ReAct agent with structured LLM")
 
             rag_chain = (
@@ -260,15 +218,11 @@ class Expert:
         else:
             agent_executor = llm
             if tools:
-                adapted_tools = [self._to_single_input_tool(t) for t in tools]
-                agent_executor = initialize_agent(
-                    adapted_tools,
-                    llm,
-                    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-                    verbose=self.args.verbose,
-                    handle_parsing_errors=True,
-                )
-                self.logger.debug("Initialized ReAct agent with adapted MCP tools")
+                agent_obj = create_agent(
+                    tools=tools,
+                    model=llm)               
+                agent_executor = AgentExecutor(agent=agent_obj, tools=tools, verbose=self.args.verbose)
+                self.logger.debug("Initialized ReAct agent with MCP tools")
                     
             rag_chain = (
                 params
