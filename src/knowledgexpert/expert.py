@@ -199,6 +199,8 @@ class Expert:
             params["schema"] = lambda x: self.structure.schema_json()
 
             executor_structured = structured_llm
+            # TODO: Going to rework this area to fit the new Langchain 1.x architecture
+            """            
             if tools:
                 agent_obj = create_agent(
                     tools=tools,
@@ -207,6 +209,7 @@ class Expert:
                 )
                 executor_structured = AgentExecutor(agent=agent_obj, tools=tools, verbose=self.args.verbose)
                 self.logger.debug("Initialized ReAct agent with structured LLM")
+            """
 
             rag_chain = (
                 params
@@ -217,12 +220,15 @@ class Expert:
             )
         else:
             agent_executor = llm
+            # TODO: Going to rework this area to fit the new Langchain 1.x architecture
+            """
             if tools:
                 agent_obj = create_agent(
                     tools=tools,
                     model=llm)               
                 agent_executor = AgentExecutor(agent=agent_obj, tools=tools, verbose=self.args.verbose)
                 self.logger.debug("Initialized ReAct agent with MCP tools")
+            """
                     
             rag_chain = (
                 params

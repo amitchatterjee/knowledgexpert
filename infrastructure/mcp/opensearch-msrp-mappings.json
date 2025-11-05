@@ -1,0 +1,9 @@
+{
+    "_meta": {
+        "dataset": "msrp",
+        "source": "toyota-2025-msrp-bulk.ndjson",
+        "ingested_by": "upsert-script",
+        "last_ingested": "2025-11-04T12:00:00Z",
+        "notes": "Base model pricing only"
+    }
+}

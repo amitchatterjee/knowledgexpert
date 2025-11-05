@@ -165,6 +165,12 @@ curl -sS -H "Content-Type: application/x-ndjson" \
   --insecure \
   "https://localhost:9200/_bulk"
 
+
+curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic YWRtaW46b3BlblNlYXJjaCQyMDI1" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-msrp-mappings.json"
+
 ```
 
 ## Execute Knowledgexpert cli
@@ -220,6 +226,12 @@ python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HO
 ## Execute Bookworm CLI
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOME/infrastructure/data/insurance-docs;*.md"
+
+```
+
+## Execute Raven CLI
+```bash
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure  --input "What is the MSRP value for Toyota Prius 2025 base model?"
 
 ```
 
