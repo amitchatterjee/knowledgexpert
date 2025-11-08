@@ -10,8 +10,15 @@ import httpx
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
+from langchain.agents.middleware import dynamic_prompt, ModelRequest
+from langchain.tools import tool
 
 from knowledgexpert.util import setup_llm
+from knowledgexpert.util import setup_embedding, build_faiss_store_from_context
+import chromadb
+from langchain_chroma import Chroma
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_core.tools.retriever import create_retriever_tool
 
 class Answer(BaseModel):
     summary: str
@@ -20,6 +27,33 @@ class Answer(BaseModel):
 
 default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "raven")
+
+@dynamic_prompt
+def raven_prompt(request:ModelRequest) -> str:
+    raven_ctx:Raven = request.runtime.context.get("raven_ctx")
+    prompt = str(raven_ctx.prompt)
+    if not raven_ctx.args.skipVectorRetrieval and raven_ctx.args.vectorRetrievalType == '2step':
+        # TODO move this to its own prompt file
+        prompt += f"""\n\n
+        To answer the question, you can use the contextual information snippets are provided below, The snippets were retrieved from a vector database using the question as the vector search query. Note that the vector database may have returned information that is not applicable.
+
+        <contextual_information>
+        Additional Contextual information
+        {retrieve_documents(request, raven_ctx)} 
+        <contextual_information>
+        """
+    # print(prompt)
+    return prompt
+
+def retrieve_documents(request, raven_ctx):
+    documents = raven_ctx.retriever.invoke(request.messages[0].content)
+    parts = []
+    for i, doc in enumerate(documents):
+        page = getattr(doc, "page_content", None) or ""
+        meta = getattr(doc, "metadata", None) or {}
+        parts.append(f"Source {i}:\n{page}\nMetadata: {meta}")
+    retriever_context = "\n\n".join(parts) if parts else ""
+    return retriever_context
 
 class Raven:
     def __init__(self, logger: Logger, structure:Any=None, **kwargs):       
@@ -42,23 +76,35 @@ class Raven:
                         output_format=self.args.format,)
 
         tools = []
-        tools = asyncio.run(self._setup_mcp_tools(self.args.mcpConfig, insecure=self.args.mcpInsecure))
+        if not self.args.skipMcpTools:
+            tools.extend(asyncio.run(self._setup_mcp_tools(self.args.mcpConfig, insecure=self.args.mcpInsecure)))
+        
+        if not self.args.skipVectorRetrieval:
+            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
+            if self.args.vectorRetrievalType == 'agentic':
+                retriever_tool = create_retriever_tool(self.retriever,
+                                name="AutoDoc",
+                                description="Search and return information from the company vector db")
+                tools.append(retriever_tool)
 
-        prompt_path = os.path.join(self.prompt_dir, "mcp_prompt.txt")
-        mcp_prompt = "You are a helpful assistant. Be concise and accurate."
-        if os.path.exists(prompt_path):
-            with open(prompt_path, "r", encoding="utf-8") as pf:
-                mcp_prompt = pf.read()
-            
-        else:
-            self.logger.warning("MCP prompt file not found: %s", prompt_path)
+        self.prompt = self._setup_prompt(self.prompt_dir)
 
         self.agent = create_agent(
             model=model,
             tools=tools,
-            system_prompt=mcp_prompt,
+            middleware=[raven_prompt],
             response_format=ToolStrategy(self.structure)
     )
+        
+    def _setup_prompt(self, prompt_dir):
+        prompt_path = os.path.join(prompt_dir, "agentic_prompt.txt")
+        prompt = "You are a helpful assistant. Be concise and accurate."
+        if os.path.exists(prompt_path):
+            with open(prompt_path, "r", encoding="utf-8") as pf:
+                prompt = pf.read()
+        else:
+            self.logger.warning("MCP prompt file not found: %s", prompt_path)
+        return prompt
 
     async def _setup_mcp_tools(self, mcp_config, insecure: bool = False):
             path = os.path.expanduser(mcp_config)
@@ -106,10 +152,54 @@ class Raven:
                     t.func = _make_sync(coro)
             self.logger.debug("Loaded tools based on configuration file: %s", mcp_config)
             return tools
-    
-    def invoke(self, input:dict):
-        return self.agent.invoke(input)
 
-    def ainvoke(self, input:dict):
-        return self.agent.ainvoke(input)
+    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, embeddings):
+        embeddings_dict = {}
+        for embedding in embeddings:
+            embeddings_dict[embedding['embeddingId']] = setup_embedding(embedding)
+
+        faiss_store = None
+        if context_paths:
+            faiss_store = build_faiss_store_from_context(context_paths, embeddings_dict[context_paths_embedding])
+        
+        chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
+        retrievers = []
+        weights = []
+        for i, collection_element in enumerate(base_collections):
+            vectorDb_kwargs = {"search_kwargs": {}}
+            if 'k' in collection_element and collection_element['k']:
+                vectorDb_kwargs["search_kwargs"]["k"] = collection_element['k']
+            if 'searchAlgorithm' in collection_element and collection_element['searchAlgorithm'] == "similarity_score_threshold" and 'scoreThreshold' in collection_element and collection_element['scoreThreshold']:
+                vectorDb_kwargs["search_kwargs"]["score_threshold"] = collection_element['scoreThreshold']
+                
+            vector_db = Chroma(
+                client=chroma_client, collection_name=collection_element['collectionName'], 
+                embedding_function=embeddings_dict[collection_element['embeddingId']])
+            retrievers.append(vector_db.as_retriever(search_type=collection_element['searchAlgorithm'], **vectorDb_kwargs))
+            # Use ensemble_weights[i] if available, else default to 1.0
+            if ensemble_weights and i < len(ensemble_weights):
+                weights.append(ensemble_weights[i])
+            else:
+                weights.append(1.0)
+        # Optionally add faiss_store as another retriever
+        if faiss_store:
+            retrievers.append(faiss_store.as_retriever())
+            # If ensemble_weights has an extra value, use it, else default to 1.0
+            if ensemble_weights and len(ensemble_weights) > len(base_collections):
+                weights.append(ensemble_weights[len(base_collections)])
+            else:
+                weights.append(1.0)
+        # If only one retriever, return it directly
+        if len(retrievers) == 1:
+            return retrievers[0]
+        # Otherwise, return an ensemble retriever
+        return EnsembleRetriever(retrievers=retrievers, weights=weights)
+    
+    def invoke(self, input:dict, context:dict={}):
+        context["raven_ctx"] = self
+        return self.agent.invoke(input, context=context)
+
+    def ainvoke(self, input:dict, context:dict={}):
+        context["raven_ctx"] = self
+        return self.agent.ainvoke(input, context=context)
 
