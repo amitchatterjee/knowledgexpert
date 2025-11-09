@@ -35,7 +35,7 @@ def raven_prompt(request:ModelRequest) -> str:
     if not raven_ctx.args.skipVectorRetrieval and raven_ctx.args.vectorRetrievalType == '2step':
         # TODO move this to its own prompt file
         prompt += f"""\n\n
-        To answer the question, you can use the contextual information snippets are provided below, The snippets were retrieved from a vector database using the question as the vector search query. Note that the vector database may have returned information that is not applicable.
+        To answer the question, you can use the contextual information snippets are provided below, The snippets were retrieved from a vector database using the question as the vector search query. Note that the vector database may have returned information that is not related to the question. If that is the case, ignore it.
 
         <contextual_information>
         Additional Contextual information
@@ -83,8 +83,8 @@ class Raven:
             self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
             if self.args.vectorRetrievalType == 'agentic':
                 retriever_tool = create_retriever_tool(self.retriever,
-                                name="AutoDoc",
-                                description="Search and return information from the company vector db")
+                                name=self.args.vectorToolName,
+                                description=self.args.vectorToolDescription)
                 tools.append(retriever_tool)
 
         self.prompt = self._setup_prompt(self.prompt_dir)
@@ -103,7 +103,7 @@ class Raven:
             with open(prompt_path, "r", encoding="utf-8") as pf:
                 prompt = pf.read()
         else:
-            self.logger.warning("MCP prompt file not found: %s", prompt_path)
+            self.logger.warning("Agentic prompt file not found: %s", prompt_path)
         return prompt
 
     async def _setup_mcp_tools(self, mcp_config, insecure: bool = False):
@@ -197,9 +197,7 @@ class Raven:
     
     def invoke(self, input:dict, context:dict={}):
         context["raven_ctx"] = self
-        return self.agent.invoke(input, context=context)
-
-    def ainvoke(self, input:dict, context:dict={}):
-        context["raven_ctx"] = self
-        return self.agent.ainvoke(input, context=context)
+        response = self.agent.invoke(input, context=context)
+        self.logger.debug("Response from agent:\n%s", response)
+        return response['structured_response'] if 'structured_response' in response else response
 
