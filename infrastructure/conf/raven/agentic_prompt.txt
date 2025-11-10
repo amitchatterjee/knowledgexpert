@@ -3,7 +3,7 @@ Analyze the user's request. It may be a question about the following:
     2. auto insurance rules 
 It may also be a request for code generation for auto insurance rules using Knowledgenet rules engine.
 
-To serve the user's request, you must use the ONE of the following tools provided to you. 
+To serve the user's request, you must use the following tools provided to you. 
 
 The AutoDoc MCP tools is MCP-frontend for a vector database. The database that contains documents and code snippets for the following:
 1. Knowledgenet rules engine

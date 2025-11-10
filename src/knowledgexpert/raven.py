@@ -12,6 +12,9 @@ from langchain.agents import create_agent
 from langchain.agents.structured_output import ToolStrategy
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
 from langchain.tools import tool
+from langchain_mcp_adapters.interceptors import ToolCallInterceptor, MCPToolCallRequest
+from mcp.types import CallToolResult
+import traceback
 
 from knowledgexpert.util import setup_llm
 from knowledgexpert.util import setup_embedding, build_faiss_store_from_context
@@ -29,8 +32,8 @@ default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "raven")
 
 @dynamic_prompt
-def raven_prompt(request:ModelRequest) -> str:
-    raven_ctx:Raven = request.runtime.context.get("raven_ctx")
+def raven_prompt(request: ModelRequest) -> str:
+    raven_ctx: Raven = request.runtime.context.get("raven_ctx")
     prompt = str(raven_ctx.prompt)
     if not raven_ctx.args.skipVectorRetrieval and raven_ctx.args.vectorRetrievalType == '2step':
         # TODO move this to its own prompt file
@@ -45,8 +48,14 @@ def raven_prompt(request:ModelRequest) -> str:
     # print(prompt)
     return prompt
 
+
 def retrieve_documents(request, raven_ctx):
-    documents = raven_ctx.retriever.invoke(request.messages[0].content)
+    try:
+        documents = raven_ctx.retriever.invoke(request.messages[0].content)
+    except Exception as e:
+        raven_ctx.logger.exception("Retriever invocation failed")
+        return f"Error retrieving documents: {e}"
+
     parts = []
     for i, doc in enumerate(documents):
         page = getattr(doc, "page_content", None) or ""
@@ -55,8 +64,31 @@ def retrieve_documents(request, raven_ctx):
     retriever_context = "\n\n".join(parts) if parts else ""
     return retriever_context
 
+class ToolErrorInterceptor:
+    def __init__(self, logger: Logger, include_traceback: bool = True):
+        self.logger = logger
+        self.include_traceback = include_traceback
+
+    async def __call__(self, request: MCPToolCallRequest, handler):
+        try:
+            # call the real handler which executes the tool
+            return await handler(request)
+        except Exception as e:
+            self.logger.exception("Tool %s threw exception", request.name)
+
+            # Convert into an MCP CallToolResult indicating error
+            # Minimal structure: `isError=True`, and a text block in `content`.
+            # Many MCP tool chains accept a dict-like content block; adjust keys to your server's expectations.
+            err_text = str(e)
+            stack = traceback.format_exc()
+            return CallToolResult(
+                content=[{"type": "text", "text": err_text}],
+                structuredContent={"error": err_text, "trace": stack},
+                isError=True,
+            )
+
 class Raven:
-    def __init__(self, logger: Logger, structure:Any=None, **kwargs):       
+    def __init__(self, logger: Logger, structure: Any = None, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
         self.structure = structure
@@ -69,22 +101,25 @@ class Raven:
         logging.getLogger("requests").setLevel(logging.WARNING)
         # Suppress telemetry messages
         logging.getLogger("langchain.telemetry").setLevel(logging.WARNING)
-        logging.getLogger("langchain_community.telemetry").setLevel(logging.WARNING)
+        logging.getLogger("langchain_community.telemetry").setLevel(
+            logging.WARNING)
 
-        model = setup_llm(llm_model=self.args.llmModel, 
-                        llm_api_endpoint=self.args.llmApiEndpoint, 
-                        output_format=self.args.format,)
+        model = setup_llm(llm_model=self.args.llmModel,
+                          llm_api_endpoint=self.args.llmApiEndpoint,
+                          output_format=self.args.format,)
 
         tools = []
         if not self.args.skipMcpTools:
-            tools.extend(asyncio.run(self._setup_mcp_tools(self.args.mcpConfig, insecure=self.args.mcpInsecure)))
-        
+            tools.extend(asyncio.run(self._setup_mcp_tools(
+                self.args.mcpConfig, insecure=self.args.mcpInsecure)))
+
         if not self.args.skipVectorRetrieval:
-            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
+            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections,
+                                                       self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
             if self.args.vectorRetrievalType == 'agentic':
                 retriever_tool = create_retriever_tool(self.retriever,
-                                name=self.args.vectorToolName,
-                                description=self.args.vectorToolDescription)
+                                                       name=self.args.vectorToolName,
+                                                       description=self.args.vectorToolDescription)
                 tools.append(retriever_tool)
 
         self.prompt = self._setup_prompt(self.prompt_dir)
@@ -94,8 +129,8 @@ class Raven:
             tools=tools,
             middleware=[raven_prompt],
             response_format=ToolStrategy(self.structure)
-    )
-        
+        )
+
     def _setup_prompt(self, prompt_dir):
         prompt_path = os.path.join(prompt_dir, "agentic_prompt.txt")
         prompt = "You are a helpful assistant. Be concise and accurate."
@@ -103,65 +138,70 @@ class Raven:
             with open(prompt_path, "r", encoding="utf-8") as pf:
                 prompt = pf.read()
         else:
-            self.logger.warning("Agentic prompt file not found: %s", prompt_path)
+            self.logger.warning(
+                "Agentic prompt file not found: %s", prompt_path)
         return prompt
 
     async def _setup_mcp_tools(self, mcp_config, insecure: bool = False):
-            path = os.path.expanduser(mcp_config)
-            verify = False if insecure else True
-            if not verify:
-                self.logger.warning("TLS verification is disabled for MCP connections. This is insecure and should only be used for self-signed certificates.")
+        path = os.path.expanduser(mcp_config)
+        verify = False if insecure else True
+        if not verify:
+            self.logger.warning(
+                "TLS verification is disabled for MCP connections. This is insecure and should only be used for self-signed certificates.")
 
-            def httpx_client_factory(headers: dict[str, str] | None = None, timeout: httpx.Timeout | None = None, auth: httpx.Auth | None = None) -> httpx.AsyncClient:
-                client_headers = headers.copy() if headers else {}
-                return httpx.AsyncClient(verify=verify, headers=client_headers, timeout=timeout, auth=auth)
+        def httpx_client_factory(headers: dict[str, str] | None = None, timeout: httpx.Timeout | None = None, auth: httpx.Auth | None = None) -> httpx.AsyncClient:
+            client_headers = headers.copy() if headers else {}
+            return httpx.AsyncClient(verify=verify, headers=client_headers, timeout=timeout, auth=auth)
 
-            with open(path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+        with open(path, "r", encoding="utf-8") as f:
+            config = json.load(f)
 
-            for v in config.values():
-                if v.get("transport") in ("streamable_http", "sse"):
-                    v["httpx_client_factory"] = httpx_client_factory
+        for v in config.values():
+            if v.get("transport") in ("streamable_http", "sse"):
+                v["httpx_client_factory"] = httpx_client_factory
 
-            client = MultiServerMCPClient(config)
-            tools = await client.get_tools()
-            # Some MCP-provided tools are StructuredTool instances that only
-            # implement an async coroutine (they have `coroutine` but no
-            # synchronous `func`). Langchain's tooling may attempt to call
-            # tools synchronously (for threaded execution) which raises
-            # "StructuredTool does not support sync invocation." To support
-            # those sync call-sites, provide a thin synchronous wrapper that
-            # runs the coroutine in a fresh event loop when invoked.
-            for t in tools:
-                # Only wrap tools that expose a coroutine but no sync func
-                try:
-                    has_coroutine = getattr(t, "coroutine", None) is not None
-                    has_func = getattr(t, "func", None) is not None
-                except Exception:
-                    has_coroutine = False
-                    has_func = False
-                if has_coroutine and not has_func:
-                    coro = t.coroutine
+        client = MultiServerMCPClient(config, tool_interceptors=[ToolErrorInterceptor(self.logger)])
+        tools = await client.get_tools()
+        # Some MCP-provided tools are StructuredTool instances that only
+        # implement an async coroutine (they have `coroutine` but no
+        # synchronous `func`). Langchain's tooling may attempt to call
+        # tools synchronously (for threaded execution) which raises
+        # "StructuredTool does not support sync invocation." To support
+        # those sync call-sites, provide a thin synchronous wrapper that
+        # runs the coroutine in a fresh event loop when invoked.
+        for t in tools:
+            # Only wrap tools that expose a coroutine but no sync func
+            try:
+                has_coroutine = getattr(t, "coroutine", None) is not None
+                has_func = getattr(t, "func", None) is not None
+            except Exception:
+                has_coroutine = False
+                has_func = False
+            if has_coroutine and not has_func:
+                coro = t.coroutine
 
-                    def _make_sync(coro_fn):
-                        def _sync_wrapper(*args, **kwargs):
-                            return asyncio.run(coro_fn(*args, **kwargs))
+                def _make_sync(coro_fn):
+                    def _sync_wrapper(*args, **kwargs):
+                        return asyncio.run(coro_fn(*args, **kwargs))
 
-                        return _sync_wrapper
+                    return _sync_wrapper
 
-                    t.func = _make_sync(coro)
-            self.logger.debug("Loaded tools based on configuration file: %s", mcp_config)
-            return tools
+                t.func = _make_sync(coro)
+        self.logger.debug(
+            "Loaded tools based on configuration file: %s", mcp_config)
+        return tools
 
     def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, embeddings):
         embeddings_dict = {}
         for embedding in embeddings:
-            embeddings_dict[embedding['embeddingId']] = setup_embedding(embedding)
+            embeddings_dict[embedding['embeddingId']
+                            ] = setup_embedding(embedding)
 
         faiss_store = None
         if context_paths:
-            faiss_store = build_faiss_store_from_context(context_paths, embeddings_dict[context_paths_embedding])
-        
+            faiss_store = build_faiss_store_from_context(
+                context_paths, embeddings_dict[context_paths_embedding])
+
         chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
         retrievers = []
         weights = []
@@ -171,11 +211,12 @@ class Raven:
                 vectorDb_kwargs["search_kwargs"]["k"] = collection_element['k']
             if 'searchAlgorithm' in collection_element and collection_element['searchAlgorithm'] == "similarity_score_threshold" and 'scoreThreshold' in collection_element and collection_element['scoreThreshold']:
                 vectorDb_kwargs["search_kwargs"]["score_threshold"] = collection_element['scoreThreshold']
-                
+
             vector_db = Chroma(
-                client=chroma_client, collection_name=collection_element['collectionName'], 
+                client=chroma_client, collection_name=collection_element['collectionName'],
                 embedding_function=embeddings_dict[collection_element['embeddingId']])
-            retrievers.append(vector_db.as_retriever(search_type=collection_element['searchAlgorithm'], **vectorDb_kwargs))
+            retrievers.append(vector_db.as_retriever(
+                search_type=collection_element['searchAlgorithm'], **vectorDb_kwargs))
             # Use ensemble_weights[i] if available, else default to 1.0
             if ensemble_weights and i < len(ensemble_weights):
                 weights.append(ensemble_weights[i])
@@ -194,10 +235,9 @@ class Raven:
             return retrievers[0]
         # Otherwise, return an ensemble retriever
         return EnsembleRetriever(retrievers=retrievers, weights=weights)
-    
-    def invoke(self, input:dict, context:dict={}):
+
+    def invoke(self, input: dict, context: dict = {}):
         context["raven_ctx"] = self
         response = self.agent.invoke(input, context=context)
         self.logger.debug("Response from agent:\n%s", response)
         return response['structured_response'] if 'structured_response' in response else response
-
