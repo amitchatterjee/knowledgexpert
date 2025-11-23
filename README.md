@@ -231,7 +231,7 @@ python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOM
 
 ## Execute Raven CLI
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure  --input "What is the MSRP value for Toyota Prius 2025 base model?"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure  --input "What is the MSRP value for Toyota Prius 2025 base model?"
 
 python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA"  --input "What is a ruleset?"
 

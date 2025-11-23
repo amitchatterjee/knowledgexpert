@@ -24,8 +24,8 @@ def parse_args(args_list=None):
 
     # Options
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured'")
-    parser.add_argument("--skipVectorRetrieval", action="store_true", help="Skip vector database retrieval and send the prompt directly to the LLM (default: False)")
-    parser.add_argument("--vectorRetrievalType", choices=["2step", "agentic"], default="agentic", help="Specify what style of vector retrieval is needed. Default: 'agentic'") 
+    parser.add_argument("--skipRetrieval", action="store_true", help="Skip vector database retrieval and send the prompt directly to the LLM (default: False)")
+    parser.add_argument("--retrievalType", choices=["2stepRag", "agenticRag", "document"], default="agenticRag", help="Specify what style of vector retrieval is needed. Default: 'agentic'") 
     parser.add_argument("--skipMcpTools", action="store_true", help="Skip MCP tools use and send the prompt directly to the LLM (default: False)")
 
     # Vector-related stuff

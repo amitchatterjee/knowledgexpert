@@ -77,7 +77,7 @@ class BookWorm:
             chunks = create_chunks(([doc],{}), py_splitter=self.py_splitter, md_splitter=self.md_splitter, txt_splitter=self.txt_splitter, html_splitter=self.html_splitter)
             for chunk in chunks:
                 self.logger.debug(f"Processing chunk from {doc.metadata.get('source', '')}")
-                input = f"<documentSection>\nDocument Section:\n{chunk}</documentSection>\n\n<answersFromOtherSections>\nAnswers from other sections:\n{self.format_list(results)}<answersFromOtherSections>\n\n"
+                input = f"<documentSection>\nDocument Section:\n{chunk}</documentSection>\n\n<answersFromOtherSections>\nAnswers from other sections:\n{self.format_list(results)}</answersFromOtherSections>\n\n"
                 result = self.expert.handle_question(user_query, name, interactions=input)
                 if result.informationFound:
                     self.logger.debug(f"Found relevant information in chunk from: {doc.metadata.get('source', '')}. Information: {result.explanation}")

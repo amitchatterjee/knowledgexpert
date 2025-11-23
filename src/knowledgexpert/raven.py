@@ -13,20 +13,21 @@ from langchain.agents.structured_output import ToolStrategy
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
 from langchain.tools import tool
 from langchain_mcp_adapters.interceptors import ToolCallInterceptor, MCPToolCallRequest
-from mcp.types import CallToolResult
-import traceback
-
-from knowledgexpert.util import setup_llm
-from knowledgexpert.util import setup_embedding, build_faiss_store_from_context
 import chromadb
 from langchain_chroma import Chroma
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.tools.retriever import create_retriever_tool
+from langchain.agents.middleware import wrap_tool_call
+from langchain.messages import ToolMessage
+
+from knowledgexpert.util import setup_llm
+from knowledgexpert.util import setup_embedding, build_faiss_store_from_context
 
 class Answer(BaseModel):
     summary: str
     answer: str
     reference: str
+
 
 default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "raven")
@@ -35,25 +36,29 @@ default_conf_dir = os.path.join(os.path.expanduser(
 def raven_prompt(request: ModelRequest) -> str:
     raven_ctx: Raven = request.runtime.context.get("raven_ctx")
     prompt = str(raven_ctx.prompt)
-    if not raven_ctx.args.skipVectorRetrieval and raven_ctx.args.vectorRetrievalType == '2step':
+    if raven_ctx.args.skipRetrieval:
+        return prompt
+    if raven_ctx.args.retrievalType == '2stepRag':
         # TODO move this to its own prompt file
         prompt += f"""\n\n
-        To answer the question, you can use the contextual information snippets are provided below, The snippets were retrieved from a vector database using the question as the vector search query. Note that the vector database may have returned information that is not related to the question. If that is the case, ignore it.
+        To answer the question, you can use the contextual information snippets are provided below. The snippets were retrieved from a vector database using the question as the vector search query. Note that the vector database may have returned information that is not related to the question. If that is the case, ignore it.
 
         <contextual_information>
         Additional Contextual information
-        {retrieve_documents(request, raven_ctx)} 
-        <contextual_information>
+        {retrieve_from_vector_db(request, raven_ctx)} 
+        </contextual_information>
+        """
+    elif raven_ctx.args.retrievalType == 'document':
+        prompt += f"""\n\n{request.runtime.context['document']} 
         """
     # print(prompt)
     return prompt
 
-
-def retrieve_documents(request, raven_ctx):
+def retrieve_from_vector_db(request, raven_ctx):
     try:
         documents = raven_ctx.retriever.invoke(request.messages[0].content)
     except Exception as e:
-        raven_ctx.logger.exception("Retriever invocation failed")
+        raven_ctx.logger.exception("Retriever invocation failed. %s", e)
         return f"Error retrieving documents: {e}"
 
     parts = []
@@ -64,28 +69,25 @@ def retrieve_documents(request, raven_ctx):
     retriever_context = "\n\n".join(parts) if parts else ""
     return retriever_context
 
-class ToolErrorInterceptor:
-    def __init__(self, logger: Logger, include_traceback: bool = True):
-        self.logger = logger
-        self.include_traceback = include_traceback
-
-    async def __call__(self, request: MCPToolCallRequest, handler):
-        try:
-            # call the real handler which executes the tool
-            return await handler(request)
-        except Exception as e:
-            self.logger.exception("Tool %s threw exception", request.name)
-
-            # Convert into an MCP CallToolResult indicating error
-            # Minimal structure: `isError=True`, and a text block in `content`.
-            # Many MCP tool chains accept a dict-like content block; adjust keys to your server's expectations.
-            err_text = str(e)
-            stack = traceback.format_exc()
-            return CallToolResult(
-                content=[{"type": "text", "text": err_text}],
-                structuredContent={"error": err_text, "trace": stack},
-                isError=True,
-            )
+@wrap_tool_call
+def tool_wrapper(request, handler):
+    """Debug logs tool execution traces and logs exception from a tool"""
+    raven_ctx: Raven = request.runtime.context.get("raven_ctx")
+    try:
+        raven_ctx.logger.debug('Invoking tool %s, id: %s', request.tool.name, request.tool_call["id"])
+        result = handler(request)
+        raven_ctx.logger.debug('Invoked tool %s, id: %s, result: %s', request.tool.name, request.tool_call["id"], result)
+        return result
+    except Exception as e:
+        raven_ctx.logger.exception(
+            "Tool %s (id: %s) failed: %s",
+            getattr(request.tool, "name", "<unknown>"),
+            request.tool_call.get("id"),
+            e,
+        )
+        return ToolMessage(
+            content=f"Tool error: Please check your input and try again. ({str(e)})",
+            tool_call_id=request.tool_call["id"])
 
 class Raven:
     def __init__(self, logger: Logger, structure: Any = None, **kwargs):
@@ -113,10 +115,10 @@ class Raven:
             tools.extend(asyncio.run(self._setup_mcp_tools(
                 self.args.mcpConfig, insecure=self.args.mcpInsecure)))
 
-        if not self.args.skipVectorRetrieval:
+        if not self.args.skipRetrieval:
             self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections,
                                                        self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
-            if self.args.vectorRetrievalType == 'agentic':
+            if self.args.retrievalType == 'agenticRag':
                 retriever_tool = create_retriever_tool(self.retriever,
                                                        name=self.args.vectorToolName,
                                                        description=self.args.vectorToolDescription)
@@ -127,7 +129,7 @@ class Raven:
         self.agent = create_agent(
             model=model,
             tools=tools,
-            middleware=[raven_prompt],
+            middleware=[tool_wrapper, raven_prompt],
             response_format=ToolStrategy(self.structure)
         )
 
@@ -160,7 +162,7 @@ class Raven:
             if v.get("transport") in ("streamable_http", "sse"):
                 v["httpx_client_factory"] = httpx_client_factory
 
-        client = MultiServerMCPClient(config, tool_interceptors=[ToolErrorInterceptor(self.logger)])
+        client = MultiServerMCPClient(config)
         tools = await client.get_tools()
         # Some MCP-provided tools are StructuredTool instances that only
         # implement an async coroutine (they have `coroutine` but no
