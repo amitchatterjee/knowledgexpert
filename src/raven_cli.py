@@ -25,7 +25,7 @@ def parse_args(args_list=None):
     # Options
     parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured'")
     parser.add_argument("--skipRetrieval", action="store_true", help="Skip vector database retrieval and send the prompt directly to the LLM (default: False)")
-    parser.add_argument("--retrievalType", choices=["2stepRag", "agenticRag", "document"], default="agenticRag", help="Specify what style of vector retrieval is needed. Default: 'agentic'") 
+    parser.add_argument("--retrievalType", choices=["2stepRag", "agenticRag"], default="agenticRag", help="Specify what style of vector retrieval is needed. Default: 'agentic'") 
     parser.add_argument("--skipMcpTools", action="store_true", help="Skip MCP tools use and send the prompt directly to the LLM (default: False)")
 
     # Vector-related stuff
@@ -46,7 +46,7 @@ def parse_args(args_list=None):
     parser.add_argument("--vectorToolDescription", default="Search and return information from the company vector db", help="If agentic RAG option is selected, the description for the vector tool")
 
     # MCP-related stuff
-    parser.add_argument("--mcpConfig", required=True, help="Path to MCP config JSON")
+    parser.add_argument("--mcpConfig", help="Path to MCP config JSON")
     parser.add_argument("--mcpInsecure", action="store_true", help="Disable TLS verification for MCP")
 
     # General configuration
@@ -129,7 +129,7 @@ def serve_cli(raven, logger, input):
 
         request = {"messages": [{"role": "user", "content": user_query}]}
         result = raven.invoke(request)
-        console.print("Knowledge Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
+        console.print("Raven Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(result)
         if input:
             break

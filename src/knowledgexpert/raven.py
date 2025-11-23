@@ -36,19 +36,20 @@ default_conf_dir = os.path.join(os.path.expanduser(
 def raven_prompt(request: ModelRequest) -> str:
     raven_ctx: Raven = request.runtime.context.get("raven_ctx")
     prompt = str(raven_ctx.prompt)
-    if not raven_ctx.args.skipRetrieval:
-        if raven_ctx.args.retrievalType == '2stepRag':
-            prompt += f"""\n\n
-            {raven_ctx.two_step_prompt}
+    if not raven_ctx.args.skipRetrieval and raven_ctx.args.retrievalType == '2stepRag':
+        prompt += f"""\n\n
+        {raven_ctx.two_step_prompt}
 
-            <contextual_information>
-            Additional Contextual information
-            {retrieve_from_vector_db(request, raven_ctx)} 
-            </contextual_information>
-            """
-        elif raven_ctx.args.retrievalType == 'document':
-            prompt += f"""\n\n{request.runtime.context['document']} 
-            """
+        <contextual_information>
+        Additional Contextual information
+        {retrieve_from_vector_db(request, raven_ctx)} 
+        </contextual_information>
+        """
+        
+    if 'document' in request.runtime.context: 
+        prompt += f"""\n\n{request.runtime.context['document']} 
+    """
+    
     raven_ctx.logger.debug("prompt: %s", prompt)
     return prompt
 
@@ -129,8 +130,7 @@ class Raven:
             model=model,
             tools=tools,
             middleware=[tool_wrapper, raven_prompt],
-            response_format=ToolStrategy(self.structure)
-        )
+            response_format=ToolStrategy(self.structure))
 
     def _setup_2step_rag_prompt(self, prompt_dir):
         prompt_path = os.path.join(prompt_dir, "2step_rag_prompt.txt")

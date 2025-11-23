@@ -2,11 +2,12 @@
 import logging
 import argparse
 import os
+from rich.console import Console
 from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
 
 from knowledgexpert.bookworm import BookWorm
-from expert_cli import parse_args as default_values
+from raven_cli import parse_args as default_values
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="BookWorm LLM Assistant")
@@ -21,7 +22,8 @@ def parse_args(args_list=None):
     else:
         return parser.parse_args()
 
-def process(args, logger, bookworm):
+def serve_cli(args, logger, bookworm):
+    console = Console()
     name = os.environ.get("USER", "Unknown")
     history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "bookworm.history")
     try:
@@ -33,19 +35,23 @@ def process(args, logger, bookworm):
     except Exception as e:
         logger.warning(f"Could not ensure history file {history_file}: {e}")
     history = FileHistory(history_file)
+    console.print("BookWorm CLI. Type 'exit' to quit.")
     while True:
         user_query = prompt(
-            "Enter your question (type 'exit' or 'quit' to leave): ",
+            f"\n{name}:> ",
             history=history
-        )
-        if user_query.strip().lower() in ("exit", "quit"):
+        ).strip()
+        if user_query.lower() in ("exit", "quit"):
+            console.print("Goodbye!")
             return
-        if not user_query.strip():
+        if not user_query:
             continue
+        console.print('The assistant is collecting information and processing them to come up with an answer...')
         response = bookworm.handle_question(user_query, name, args.documents)
         for idx, element in enumerate(response):
             logger.debug(f"BookWormOutput[{idx}]:\n{element}")
-        print(response[-1] if len(response) > 0 else 'No information found')
+        console.print("Bookworm Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
+        console.print(response[-1] if len(response) > 0 else 'No information found')
     
 if __name__ == "__main__":
     args = parse_args()
@@ -54,4 +60,4 @@ if __name__ == "__main__":
     logger = logging.getLogger("Bookworm")
     dict_args = vars(args)
     bookworm = BookWorm(logger, vars(default_values([])), **dict_args)
-    process(args, logger, bookworm)
+    serve_cli(args, logger, bookworm)
