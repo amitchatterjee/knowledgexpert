@@ -1,0 +1,1 @@
+To answer the question, you can use the contextual information snippets are provided below. The snippets were retrieved from a vector database by doing a nearness search using the question as the input. Note that the vector database may have returned information that is not related to the question. If that is the case, ignore it.

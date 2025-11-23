@@ -36,22 +36,20 @@ default_conf_dir = os.path.join(os.path.expanduser(
 def raven_prompt(request: ModelRequest) -> str:
     raven_ctx: Raven = request.runtime.context.get("raven_ctx")
     prompt = str(raven_ctx.prompt)
-    if raven_ctx.args.skipRetrieval:
-        return prompt
-    if raven_ctx.args.retrievalType == '2stepRag':
-        # TODO move this to its own prompt file
-        prompt += f"""\n\n
-        To answer the question, you can use the contextual information snippets are provided below. The snippets were retrieved from a vector database using the question as the vector search query. Note that the vector database may have returned information that is not related to the question. If that is the case, ignore it.
+    if not raven_ctx.args.skipRetrieval:
+        if raven_ctx.args.retrievalType == '2stepRag':
+            prompt += f"""\n\n
+            {raven_ctx.two_step_prompt}
 
-        <contextual_information>
-        Additional Contextual information
-        {retrieve_from_vector_db(request, raven_ctx)} 
-        </contextual_information>
-        """
-    elif raven_ctx.args.retrievalType == 'document':
-        prompt += f"""\n\n{request.runtime.context['document']} 
-        """
-    # print(prompt)
+            <contextual_information>
+            Additional Contextual information
+            {retrieve_from_vector_db(request, raven_ctx)} 
+            </contextual_information>
+            """
+        elif raven_ctx.args.retrievalType == 'document':
+            prompt += f"""\n\n{request.runtime.context['document']} 
+            """
+    raven_ctx.logger.debug("prompt: %s", prompt)
     return prompt
 
 def retrieve_from_vector_db(request, raven_ctx):
@@ -94,7 +92,7 @@ class Raven:
         self.args = Namespace(**kwargs)
         self.logger = logger
         self.structure = structure
-        self.prompt_dir = self.args.promptDir if self.args.promptDir else default_conf_dir
+        self.prompt_dir = self.args.promptDir
 
         logging.getLogger("langchain").setLevel(self.logger.level)
         # Suppress HTTP request/response messages
@@ -116,15 +114,16 @@ class Raven:
                 self.args.mcpConfig, insecure=self.args.mcpInsecure)))
 
         if not self.args.skipRetrieval:
-            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections,
-                                                       self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
+            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
             if self.args.retrievalType == 'agenticRag':
                 retriever_tool = create_retriever_tool(self.retriever,
                                                        name=self.args.vectorToolName,
                                                        description=self.args.vectorToolDescription)
                 tools.append(retriever_tool)
+            elif self.args.retrievalType == '2stepRag':
+                self.two_step_prompt = self._setup_2step_rag_prompt(self.prompt_dir)
 
-        self.prompt = self._setup_prompt(self.prompt_dir)
+        self.prompt = self._setup_agentic_prompt(self.prompt_dir)
 
         self.agent = create_agent(
             model=model,
@@ -133,7 +132,15 @@ class Raven:
             response_format=ToolStrategy(self.structure)
         )
 
-    def _setup_prompt(self, prompt_dir):
+    def _setup_2step_rag_prompt(self, prompt_dir):
+        prompt_path = os.path.join(prompt_dir, "2step_rag_prompt.txt")
+        prompt = "To answer the question, you can use the contextual information snippets are provided below."
+        if os.path.exists(prompt_path):
+            with open(prompt_path, "r", encoding="utf-8") as pf:
+                prompt = pf.read()
+        return prompt
+
+    def _setup_agentic_prompt(self, prompt_dir):
         prompt_path = os.path.join(prompt_dir, "agentic_prompt.txt")
         prompt = "You are a helpful assistant. Be concise and accurate."
         if os.path.exists(prompt_path):
