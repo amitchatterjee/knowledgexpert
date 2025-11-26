@@ -19,6 +19,7 @@ from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.tools.retriever import create_retriever_tool
 from langchain.agents.middleware import wrap_tool_call
 from langchain.messages import ToolMessage
+from langchain.agents import AgentState
 
 from knowledgexpert.util import setup_llm
 from knowledgexpert.util import setup_embedding, build_faiss_store_from_context
@@ -27,6 +28,10 @@ class Answer(BaseModel):
     summary: str
     answer: str
     reference: str
+
+class RavenAgentState(AgentState):  
+    user_id: str
+    persona: str
 
 
 default_conf_dir = os.path.join(os.path.expanduser(
@@ -89,11 +94,10 @@ def tool_wrapper(request, handler):
             tool_call_id=request.tool_call["id"])
 
 class Raven:
-    def __init__(self, logger: Logger, structure: Any = None, **kwargs):
+    def __init__(self, logger: Logger, structure:type = None, checkpointer =None, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
         self.structure = structure
-        self.prompt_dir = self.args.promptDir
 
         logging.getLogger("langchain").setLevel(self.logger.level)
         # Suppress HTTP request/response messages
@@ -107,7 +111,7 @@ class Raven:
 
         model = setup_llm(llm_model=self.args.llmModel,
                           llm_api_endpoint=self.args.llmApiEndpoint,
-                          output_format=self.args.format,)
+                          output_format='structured' if self.structure else 'raw')
 
         tools = []
         if not self.args.skipMcpTools:
@@ -122,15 +126,17 @@ class Raven:
                                                        description=self.args.vectorToolDescription)
                 tools.append(retriever_tool)
             elif self.args.retrievalType == '2stepRag':
-                self.two_step_prompt = self._setup_2step_rag_prompt(self.prompt_dir)
+                self.two_step_prompt = self._setup_2step_rag_prompt(self.args.promptDir)
 
-        self.prompt = self._setup_agentic_prompt(self.prompt_dir)
+        self.prompt = self._setup_agentic_prompt(self.args.promptDir)
 
         self.agent = create_agent(
             model=model,
             tools=tools,
+            checkpointer=checkpointer,
+            state_schema=RavenAgentState,
             middleware=[tool_wrapper, raven_prompt],
-            response_format=ToolStrategy(self.structure))
+            response_format=ToolStrategy(self.structure) if self.structure else None)
 
     def _setup_2step_rag_prompt(self, prompt_dir):
         prompt_path = os.path.join(prompt_dir, "2step_rag_prompt.txt")
@@ -245,8 +251,8 @@ class Raven:
         # Otherwise, return an ensemble retriever
         return EnsembleRetriever(retrievers=retrievers, weights=weights)
 
-    def invoke(self, input: dict, context: dict = {}):
+    def invoke(self, input: dict, context: dict = {}, config:dict = {}):
         context["raven_ctx"] = self
-        response = self.agent.invoke(input, context=context)
+        response = self.agent.invoke(input, context=context, config=config)
         self.logger.debug("Response from agent:\n%s", response)
         return response['structured_response'] if 'structured_response' in response else response

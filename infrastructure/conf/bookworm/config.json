@@ -1,4 +1,6 @@
 {
+    "persona": "Bookworm",
+
     "promptDir": "${HOME}/.knowledgexpert/conf/bookworm",
 
     "llmModel": "gpt-4.1-mini",
@@ -6,8 +8,6 @@
     
     "skipRetrieval": true,
     "skipMcpTools": true,
-
-    "format": "structured",
 
     "log": "INFO"
 }

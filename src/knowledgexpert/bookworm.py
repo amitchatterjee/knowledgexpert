@@ -40,7 +40,7 @@ class BookWorm:
         logger.info(f"Configuration for raven - {args}")
         return Raven(logger, structure=structure, **args)
 
-    def handle_question(self, user_query, name, documents):
+    def handle_question(self, user_query, user, documents):
         all_docs = []
         for document_spec in documents:
             splits = document_spec.split(';')
@@ -88,7 +88,7 @@ class BookWorm:
                 snippet = f"<documentSection>\nDocument Section:\n{chunk}</documentSection>\n\n<answersFromOtherSections>\nAnswers from other sections:\n{self.format_list(results)}</answersFromOtherSections>\n\n"
 
                 input = {"messages": [
-                    {"role": "user", "user": name, "content": user_query}]}
+                    {"role": "user", "user": user, "content": user_query}]}
                 context = {'document': snippet}
                 result = self.raven.invoke(input, context=context)
                 if result.informationFound:

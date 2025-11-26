@@ -3,14 +3,17 @@ import importlib
 import json
 import logging
 import os
+import sqlite3
 import sys
 from rich.console import Console
 from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
-
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from knowledgexpert.raven import Answer, Raven
 from knowledgexpert.util import embedding_mapper, resolve_env_vars
+import uuid
+import time
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="Raven CLI")
@@ -21,9 +24,10 @@ def parse_args(args_list=None):
 
     # Prompt-related stuff
     parser.add_argument("--promptDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "raven"), help="Directory containing prompt templates (default: ~/.knowledgexpert/conf/prompt)")
+    parser.add_argument("--checkpointerDir", default=None, help="Directory where checkpointer data is stored. Default: None")
 
     # Options
-    parser.add_argument("--format", choices=["raw", "structured"], default="structured", help="Output format: 'raw' or 'structured'")
+    parser.add_argument("--structureClass", default="knowledgexpert.structures.CodingAdvice", help="Fully qualified class name for structure (default: knowledgexpert.structures.CodingAdvice)")
     parser.add_argument("--skipRetrieval", action="store_true", help="Skip vector database retrieval and send the prompt directly to the LLM (default: False)")
     parser.add_argument("--retrievalType", choices=["2stepRag", "agenticRag"], default="agenticRag", help="Specify what style of vector retrieval is needed. Default: 'agentic'") 
     parser.add_argument("--skipMcpTools", action="store_true", help="Skip MCP tools use and send the prompt directly to the LLM (default: False)")
@@ -44,6 +48,7 @@ def parse_args(args_list=None):
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[], help="Weights for ensemble retriever (default: [])")
     parser.add_argument("--vectorToolName", default="AutoDoc", help="If agentic RAG option is selected, the name of the vector tool")
     parser.add_argument("--vectorToolDescription", default="Search and return information from the company vector db", help="If agentic RAG option is selected, the description for the vector tool")
+    parser.add_argument("--persona", default="Raven", help="Persona name to use as input parameter (default: Raven)")
 
     # MCP-related stuff
     parser.add_argument("--mcpConfig", help="Path to MCP config JSON")
@@ -54,7 +59,7 @@ def parse_args(args_list=None):
 
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
 
-    parser.add_argument("--outputType", default=None, help="Fully qualified type name for response (default: str)")
+    parser.add_argument("--outputType", default=None, help="Fully qualified type name for response (default: None)")
 
     parser.add_argument("--input", default=None, help="Input text to invoke the agent with")
 
@@ -85,8 +90,8 @@ def parse_args(args_list=None):
         module_name, class_name = args.outputType.rsplit('.', 1)
         structure_module = importlib.import_module(module_name)
         args.outputType = getattr(structure_module, class_name)
-    else:
-        args.outputType = Answer
+    #else:
+    #    args.outputType = Answer
 
     return args
 
@@ -100,20 +105,22 @@ def collections_mapper(base_collection, default_search_algorithm, default_k,defa
     to_dict = {'collectionName': collection_name, "searchAlgorithm": search_alg, "k": k_val, "scoreThreshold": score_thresh, "embeddingId": embedding_id}
     return to_dict
 
-def serve_cli(raven, logger, input):
+def serve_cli(raven, logger, persona, is_checkpointer, input):
     console = Console()
     name = os.environ.get("USER") or os.environ.get("USERNAME") or "user"
-    history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "raven.history")
+    prompt_history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "raven.history")
+    session = f"{name}-{int(time.time())}-{uuid.uuid4().hex}"
+    logger.debug("Session id: %s", session)
     if not input:
         try:
-            history_dir = os.path.dirname(history_file)
+            history_dir = os.path.dirname(prompt_history_file)
             os.makedirs(history_dir, exist_ok=True)
-            if not os.path.exists(history_file):
-                open(history_file, "a").close()
-                logger.debug("Created history file: %s", history_file)
+            if not os.path.exists(prompt_history_file):
+                open(prompt_history_file, "a").close()
+                logger.debug("Created history file: %s", prompt_history_file)
         except Exception as e:
-            logger.warning(f"Could not ensure history file: %s. Error: %s", history_file, e)
-        history = FileHistory(history_file)
+            logger.warning(f"Could not ensure history file: %s. Error: %s", prompt_history_file, e)
+        history = FileHistory(prompt_history_file)
         console.print("Raven CLI. Type 'exit' to quit.")
     while True:
         if input:
@@ -127,8 +134,10 @@ def serve_cli(raven, logger, input):
                 continue
             console.print('The assistant is collecting information and processing them to come up with an answer...')
 
-        request = {"messages": [{"role": "user", "content": user_query}]}
-        result = raven.invoke(request)
+        config = {"configurable": {"thread_id": session}} if is_checkpointer else None
+        request = {"messages": [{"role": "user", "content": user_query}],
+                   "user_id": name, "persona": persona}
+        result = raven.invoke(request, config = config)
         console.print("Raven Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(result)
         if input:
@@ -158,9 +167,15 @@ if __name__ == "__main__":
     print("Note: If you are using a commercial LLM, make sure you have the necessary environment variable with the secret")
     logger.info("Initializing Raven using parameters: %s", merged_config)
 
+    checkpointer = None
+    if args.checkpointerDir:
+        os.makedirs(args.checkpointerDir, exist_ok=True)
+        conn = sqlite3.connect(os.path.join(args.checkpointerDir, 'checkpointer.sqlite'), check_same_thread=False)
+        checkpointer = SqliteSaver(conn)
+
     try:
-        raven = Raven(logger, structure=args.outputType,**merged_config)
-        serve_cli(raven, logger, args.input)
+        raven = Raven(logger, structure=args.outputType, checkpointer=checkpointer, **merged_config)
+        serve_cli(raven, logger, args.persona, checkpointer != None, args.input)
 
     except Exception as e:
         logger.exception("Failed to run Raven: %s", e)

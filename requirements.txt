@@ -29,3 +29,4 @@ prompt_toolkit==3.0.52
 sseclient==0.0.27
 langchain-graph-retriever==0.8.0
 langchain-classic==1.0.0
+langgraph-checkpoint-sqlite==3.0.0

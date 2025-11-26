@@ -16,6 +16,7 @@ def parse_args(args_list=None):
     parser.add_argument("--documents", nargs='+', type=str, required=True, help="List of documents to study. This arg must be in the format: dir_path;glob_pattern,... The system will process all files of type - python and md, located under the directory specified by dir_path", default=[])
     parser.add_argument("--chunkSize", type=int, default=20000, help="Chunk size for splitters")
     parser.add_argument("--chunkOverlap", type=int, default=0, help="Chunk overlap for splitters (tokens)")
+    parser.add_argument("--input", default=None, help="Input text to invoke the assistant with")
     
     if args_list is not None:
         return parser.parse_args(args_list)
@@ -26,32 +27,37 @@ def serve_cli(args, logger, bookworm):
     console = Console()
     name = os.environ.get("USER", "Unknown")
     history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "bookworm.history")
-    try:
-        history_dir = os.path.dirname(history_file)
-        os.makedirs(history_dir, exist_ok=True)
-        if not os.path.exists(history_file):
-            open(history_file, "a").close()
-            logger.debug(f"Created history file at {history_file}")
-    except Exception as e:
-        logger.warning(f"Could not ensure history file {history_file}: {e}")
-    history = FileHistory(history_file)
-    console.print("BookWorm CLI. Type 'exit' to quit.")
+    input_arg = getattr(args, "input", None)
+    if not input_arg:
+        try:
+            history_dir = os.path.dirname(history_file)
+            os.makedirs(history_dir, exist_ok=True)
+            if not os.path.exists(history_file):
+                open(history_file, "a").close()
+                logger.debug(f"Created history file at {history_file}")
+        except Exception as e:
+            logger.warning(f"Could not ensure history file {history_file}: {e}")
+        history = FileHistory(history_file)
+        console.print("BookWorm CLI. Type 'exit' to quit.")
+
     while True:
-        user_query = prompt(
-            f"\n{name}:> ",
-            history=history
-        ).strip()
-        if user_query.lower() in ("exit", "quit"):
-            console.print("Goodbye!")
-            return
-        if not user_query:
-            continue
-        console.print('The assistant is collecting information and processing them to come up with an answer...')
+        if input_arg:
+            user_query = input_arg
+        else:
+            user_query = prompt(f"\n{name}:> ", history=history).strip()
+            if user_query.lower() in ("exit", "quit"):
+                console.print("Goodbye!")
+                return
+            if not user_query:
+                continue
+            console.print('The assistant is collecting information and processing them to come up with an answer...')
+
         response = bookworm.handle_question(user_query, name, args.documents)
         for idx, element in enumerate(response):
             logger.debug(f"BookWormOutput[{idx}]:\n{element}")
-        console.print("Bookworm Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(response[-1] if len(response) > 0 else 'No information found')
+        if input_arg:
+            break
     
 if __name__ == "__main__":
     args = parse_args()
