@@ -14,9 +14,10 @@ from knowledgexpert.raven import Raven
 
 
 class BookWorm:
-    def __init__(self, logger: Logger, expert_default_args: dict, **kwargs):
+    def __init__(self, logger: Logger, expert_default_args: dict, checkpointer = None, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
+        self.checkpointer = checkpointer
 
         self.py_splitter = PythonCodeTextSplitter(
             chunk_size=self.args.chunkSize, chunk_overlap=self.args.chunkOverlap)
@@ -28,19 +29,19 @@ class BookWorm:
             chunk_size=self.args.chunkSize, chunk_overlap=self.args.chunkOverlap)
 
         self.raven = self._init_raven(
-            logger, self.args.confDir, expert_default_args, BookWormOutput)
+            logger, self.args.confDir, expert_default_args, checkpointer, BookWormOutput)
 
-    def _init_raven(self, logger, conf_dir, default_arg_vals, structure):
+    def _init_raven(self, logger, conf_dir, default_arg_vals, checkpointer, structure):
         config_path = os.path.join(conf_dir, "config.json")
         with open(config_path, "r") as f:
             expert_config = json.load(f)
         args_dict = resolve_env_vars(expert_config)
-        args = default_arg_vals
-        args.update(args_dict)
-        logger.info(f"Configuration for raven - {args}")
-        return Raven(logger, structure=structure, **args)
+        self.raven_args = default_arg_vals
+        self.raven_args.update(args_dict)
+        logger.info(f"Configuration for raven - {self.raven_args}")
+        return Raven(logger, structure=structure, checkpointer=checkpointer, **self.raven_args)
 
-    def handle_question(self, user_query, user, documents):
+    def invoke(self, user_query, user_id, session, documents):
         all_docs = []
         for document_spec in documents:
             splits = document_spec.split(';')
@@ -87,10 +88,12 @@ class BookWorm:
                     f"Processing chunk from {doc.metadata.get('source', '')}")
                 snippet = f"<documentSection>\nDocument Section:\n{chunk}</documentSection>\n\n<answersFromOtherSections>\nAnswers from other sections:\n{self.format_list(results)}</answersFromOtherSections>\n\n"
 
+                config = {"configurable": {"thread_id": session}} if self.checkpointer else None
                 input = {"messages": [
-                    {"role": "user", "user": user, "content": user_query}]}
+                    {"role": "user", "user": user_id, "content": user_query}], 
+                    "user_id": user_id, "persona": self.raven_args['persona']}
                 context = {'document': snippet}
-                result = self.raven.invoke(input, context=context)
+                result = self.raven.invoke(input, context=context, config=config)
                 if result.informationFound:
                     self.logger.debug("Found relevant information in chunk from: %s. Information: %s", doc.metadata.get("source", ""), result.explanation)
                     results.append(result)

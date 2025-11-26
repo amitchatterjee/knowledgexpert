@@ -46,8 +46,11 @@ source ~/.bashrc
 ```
 
 ### Install pre-requisite software
-```bash   
+```bash
 pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
+
+# Required for looking into checkpointer
+sudo dnf install sqlite
 ```
 
 ### Build docker container for opensearch
@@ -258,5 +261,29 @@ fastmcp dev "$KNOWLEDGEXPERT_HOME/src/wolfpack_mcp.py"
 ```bash
 # Openai
 curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" | jq
+
+```
+
+## Checkpointer inspection and debugging
+```bash
+sqlite3 ~/.knowledgexpert/history/checkpointer.sqlite
+
+# List tables
+.tables
+
+# View checkpoints table schema
+.schema checkpoints
+
+# View result in CSV/Json format
+.header on
+.mode csv
+
+.mode json
+
+# Query
+select * from checkpoints limit 1;
+
+# Quit
+.quit
 
 ```

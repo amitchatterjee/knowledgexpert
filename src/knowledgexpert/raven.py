@@ -94,7 +94,7 @@ def tool_wrapper(request, handler):
             tool_call_id=request.tool_call["id"])
 
 class Raven:
-    def __init__(self, logger: Logger, structure:type = None, checkpointer =None, **kwargs):
+    def __init__(self, logger: Logger, structure:type = None, checkpointer = None, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
         self.structure = structure

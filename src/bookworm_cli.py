@@ -2,9 +2,13 @@
 import logging
 import argparse
 import os
+import sqlite3
+import time
+import uuid
 from rich.console import Console
 from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from knowledgexpert.bookworm import BookWorm
 from raven_cli import parse_args as default_values
@@ -16,6 +20,7 @@ def parse_args(args_list=None):
     parser.add_argument("--documents", nargs='+', type=str, required=True, help="List of documents to study. This arg must be in the format: dir_path;glob_pattern,... The system will process all files of type - python and md, located under the directory specified by dir_path", default=[])
     parser.add_argument("--chunkSize", type=int, default=20000, help="Chunk size for splitters")
     parser.add_argument("--chunkOverlap", type=int, default=0, help="Chunk overlap for splitters (tokens)")
+    parser.add_argument("--checkpointerDir", default=None, help="Directory where checkpointer data is stored. Default: None")
     parser.add_argument("--input", default=None, help="Input text to invoke the assistant with")
     
     if args_list is not None:
@@ -25,7 +30,8 @@ def parse_args(args_list=None):
 
 def serve_cli(args, logger, bookworm):
     console = Console()
-    name = os.environ.get("USER", "Unknown")
+    user_id = os.environ.get("USER", "Unknown")
+    session = f"{user_id}-{bookworm.raven_args['persona']}-{int(time.time())}-{uuid.uuid4().hex}"
     history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "bookworm.history")
     input_arg = getattr(args, "input", None)
     if not input_arg:
@@ -44,7 +50,7 @@ def serve_cli(args, logger, bookworm):
         if input_arg:
             user_query = input_arg
         else:
-            user_query = prompt(f"\n{name}:> ", history=history).strip()
+            user_query = prompt(f"\n{user_id}:> ", history=history).strip()
             if user_query.lower() in ("exit", "quit"):
                 console.print("Goodbye!")
                 return
@@ -52,7 +58,7 @@ def serve_cli(args, logger, bookworm):
                 continue
             console.print('The assistant is collecting information and processing them to come up with an answer...')
 
-        response = bookworm.handle_question(user_query, name, args.documents)
+        response = bookworm.invoke(user_query, user_id, session, args.documents)
         for idx, element in enumerate(response):
             logger.debug(f"BookWormOutput[{idx}]:\n{element}")
         console.print(response[-1] if len(response) > 0 else 'No information found')
@@ -65,5 +71,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger("Bookworm")
     dict_args = vars(args)
-    bookworm = BookWorm(logger, vars(default_values([])), **dict_args)
+
+    checkpointer = None
+    if args.checkpointerDir:
+        os.makedirs(args.checkpointerDir, exist_ok=True)
+        conn = sqlite3.connect(os.path.join(args.checkpointerDir, 'checkpointer.sqlite'), check_same_thread=False)
+        checkpointer = SqliteSaver(conn)
+        
+    bookworm = BookWorm(logger, vars(default_values([])), checkpointer, **dict_args)
     serve_cli(args, logger, bookworm)

@@ -10,7 +10,7 @@ from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from knowledgexpert.raven import Answer, Raven
+from knowledgexpert.raven import Raven
 from knowledgexpert.util import embedding_mapper, resolve_env_vars
 import uuid
 import time
@@ -107,9 +107,9 @@ def collections_mapper(base_collection, default_search_algorithm, default_k,defa
 
 def serve_cli(raven, logger, persona, is_checkpointer, input):
     console = Console()
-    name = os.environ.get("USER") or os.environ.get("USERNAME") or "user"
+    user_id = os.environ.get("USER") or os.environ.get("USERNAME") or "user"
     prompt_history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "raven.history")
-    session = f"{name}-{int(time.time())}-{uuid.uuid4().hex}"
+    session = f"{user_id}-{persona}-{int(time.time())}-{uuid.uuid4().hex}"
     logger.debug("Session id: %s", session)
     if not input:
         try:
@@ -126,7 +126,7 @@ def serve_cli(raven, logger, persona, is_checkpointer, input):
         if input:
             user_query = input
         else:
-            user_query = prompt(f"\n{name}:> ", history=history).strip()
+            user_query = prompt(f"\n{user_id}:> ", history=history).strip()
             if user_query.lower() in {"exit", "quit"}:
                 console.print("Goodbye!")
                 break
@@ -136,8 +136,8 @@ def serve_cli(raven, logger, persona, is_checkpointer, input):
 
         config = {"configurable": {"thread_id": session}} if is_checkpointer else None
         request = {"messages": [{"role": "user", "content": user_query}],
-                   "user_id": name, "persona": persona}
-        result = raven.invoke(request, config = config)
+                   "user_id": user_id, "persona": persona}
+        result = raven.invoke(request, config=config)
         console.print("Raven Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(result)
         if input:
