@@ -58,21 +58,12 @@ sudo dnf install sqlite
 docker build -t opensearch-with-mcp:latest  -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/Dockerfile .
 ```
 
-
 ## Setup the infrastructure components needed for this service
 
 ### Setup the models, etc.
 ```bash
-docker exec -it ollama ollama pull deepseek-r1
 docker exec -it ollama ollama pull gemma:latest
-docker exec -it ollama ollama pull mistral:latest
-docker exec -it ollama ollama pull codellama:latest
-# To run and test (not needed, if accessing from langchain)
-docker exec -it ollama ollama run deepseek-r1
 ```
-
-### Install embeddings models locally (**Experimental)
-TODO
 
 ### Configure parameters
 ```bash
@@ -98,36 +89,35 @@ python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs \
     --clear --store
 
 # Know-it-all expert vector store
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'all_collection' --documents  \
     "$KNOWLEDGENET_HOME/src;knowledgenet/*.py;class:code,subclass:platform" \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
     "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" \
     "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
-    --collectionName 'all_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+    --clear --store --chunkSize 4800 --chunkOverlap 720
 
 # Wolfpack vector stores
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'app_platform_collection' --documents  \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;entities.py,util.py;class:code,subclass:application,category:application" \
     --embeddingApiUrl "https://api.openai.com/v1/embeddings"  --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' \
-    --collectionName 'app_platform_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+    --clear --store --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'rules_collection'  --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
     --embeddingApiUrl "https://api.openai.com/v1/embeddings" --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' \
-    --collectionName 'rules_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
+    --clear --store --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'app_docs_collection'  --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --clear --store \
-    --collectionName 'app_docs_collection' --chunkSize 4800 --chunkOverlap 720
+    --chunkSize 4800 --chunkOverlap 720
 
-python $KNOWLEDGEXPERT_HOME/src/vector_store.py --documents \
+python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'framework_docs_collection' --documents \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
     --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
-    --collectionName 'framework_docs_collection' --clear --store --chunkSize 4800 --chunkOverlap 720
-
+    --clear --store --chunkSize 4800 --chunkOverlap 720
 ```
 
 ## Query the vector database
@@ -176,29 +166,31 @@ curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
 
 ```
 
-## Execute Knowledgexpert cli
+## Execute Raven CLI
 ```bash
 ################################################
-# Execute expert using command line arguments:
+# Execute Raven using command line arguments:
 ###############################################
-# Use codellama as the graph llm and gemma as general llm running on ollama. There is no cost to use it but it is slooooow.
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest" --useGraphRag --graphLlmApiEndpoint http://localhost:11434  --graphLlmModel 'ollama:codellama:latest'
+# Use openai/gpt4 model. Utilize Opensearch MCP client
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
 
-# Use anthropic claude as the graph llm and the general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com"  --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+# Use openai/gpt4 model. Utilize agenticRag
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
 
-# Use anthropic claude as the graph llm and gpt4.1-mini as general llm
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --useGraphRag --graphLlmApiEndpoint "https://api.anthropic.com" --graphLlmModel 'anthropic:claude-sonnet-4-20250514'
+# Use gemma as general llm running on ollama. There is no cost to use it but it is slooooow. Use 2stepRag - gemma does not support tools yet.
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --skipMcpTools --retrievalType 2stepRag --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest"
+
+# Use anthropic claude as the llm with MCP
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure
 
 ################################################
 # Load command line params from a config file:
 ###############################################
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/expert --structureClass 'knowledgexpert.structures.CodingOutput'
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/wolfpack/analyst --outputType 'knowledgexpert.structures.AnalystOutput'
 
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/wolfpack/analyst --structureClass 'knowledgexpert.structures.AnalystOutput'
 
 # This example demonstrates how to use --interactions to pass information from one expert to another
-python $KNOWLEDGEXPERT_HOME/src/expert_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/wolfpack/developer --structureClass 'knowledgexpert.structures.CodingOutput' --interactions "$(cat << 'EOF'
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/wolfpack/developer --outputType 'knowledgexpert.structures.CodingOutput' --input "$(cat << 'EOF'
 Analysis:
    This is a contract validation rule that enforces age restrictions for insurance claims. The rule needs to:
    1. Access the ExecutionContext to get driver information
@@ -214,8 +206,6 @@ Code-generation Requirements:
 EOF
 )"
 
-```
-
 ## Execute Wolfpack CLI
 ```bash
 
@@ -229,14 +219,6 @@ python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HO
 ## Execute Bookworm CLI
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOME/infrastructure/data/insurance-docs;*.md"
-
-```
-
-## Execute Raven CLI
-```bash
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
-
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
 
 ```
 
@@ -282,6 +264,9 @@ sqlite3 ~/.knowledgexpert/history/checkpointer.sqlite
 
 # Query
 select * from checkpoints limit 1;
+
+# Clear checkpoints
+delete from checkpoints;
 
 # Quit
 .quit

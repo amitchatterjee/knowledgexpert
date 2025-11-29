@@ -27,7 +27,6 @@ def parse_args(args_list=None):
     parser.add_argument("--checkpointerDir", default=None, help="Directory where checkpointer data is stored. Default: None")
 
     # Options
-    parser.add_argument("--structureClass", default="knowledgexpert.structures.CodingAdvice", help="Fully qualified class name for structure (default: knowledgexpert.structures.CodingAdvice)")
     parser.add_argument("--skipRetrieval", action="store_true", help="Skip vector database retrieval and send the prompt directly to the LLM (default: False)")
     parser.add_argument("--retrievalType", choices=["2stepRag", "agenticRag"], default="agenticRag", help="Specify what style of vector retrieval is needed. Default: 'agentic'") 
     parser.add_argument("--skipMcpTools", action="store_true", help="Skip MCP tools use and send the prompt directly to the LLM (default: False)")
@@ -62,6 +61,7 @@ def parse_args(args_list=None):
     parser.add_argument("--outputType", default=None, help="Fully qualified type name for response (default: None)")
 
     parser.add_argument("--input", default=None, help="Input text to invoke the agent with")
+    parser.add_argument("--context", default=None, help="A string that is used to pass on additional context (default: '')")
 
     args = None
     if args_list is not None:
@@ -105,7 +105,7 @@ def collections_mapper(base_collection, default_search_algorithm, default_k,defa
     to_dict = {'collectionName': collection_name, "searchAlgorithm": search_alg, "k": k_val, "scoreThreshold": score_thresh, "embeddingId": embedding_id}
     return to_dict
 
-def serve_cli(raven, logger, persona, is_checkpointer, input):
+def serve_cli(raven, logger, persona, is_checkpointer, input, extra_context=None):
     console = Console()
     user_id = os.environ.get("USER") or os.environ.get("USERNAME") or "user"
     prompt_history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "raven.history")
@@ -137,7 +137,8 @@ def serve_cli(raven, logger, persona, is_checkpointer, input):
         config = {"configurable": {"thread_id": session}} if is_checkpointer else None
         request = {"messages": [{"role": "user", "content": user_query}],
                    "user_id": user_id, "persona": persona}
-        result = raven.invoke(request, config=config)
+        context = {'document': extra_context} if extra_context else {}
+        result = raven.invoke(request, config=config, context=context)
         console.print("Raven Assistant: Here is my response. I make mistakes. So, please double-check my answers.")
         console.print(result)
         if input:
@@ -175,7 +176,7 @@ if __name__ == "__main__":
 
     try:
         raven = Raven(logger, structure=args.outputType, checkpointer=checkpointer, **merged_config)
-        serve_cli(raven, logger, args.persona, checkpointer != None, args.input)
+        serve_cli(raven, logger, args.persona, checkpointer != None, args.input, args.context)
 
     except Exception as e:
         logger.exception("Failed to run Raven: %s", e)

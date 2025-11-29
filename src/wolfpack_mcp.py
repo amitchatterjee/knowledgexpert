@@ -3,11 +3,11 @@ import json
 import logging
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
-from expert_cli import parse_args as default_values
+from raven_cli import parse_args as default_values
 from knowledgexpert.wolfpack import Wolfpack
 from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
-import wolfpack_cli as wolfpack_cli
+import wolfpack_cli
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 

@@ -8,7 +8,7 @@ from langchain_core.runnables import RunnableLambda, RunnableBranch, RunnablePar
 from langchain_core.tools import StructuredTool
 
 from knowledgexpert.util import resolve_env_vars
-from knowledgexpert.raven import Raven
+from knowledgexpert.expert import Expert
 from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
 def write_files_tool(directory: str, ruleset: str, file_name: str, code: str, rule_name: str, test_data: list) -> str:
@@ -48,9 +48,9 @@ class Wolfpack:
         if not os.path.exists(self.args.workspaceDir):
             os.makedirs(self.args.workspaceDir, exist_ok=True)
 
-        self.analyst = self._init_raven(logger, self.args.confDir, "analyst", expert_default_args, structure=AnalystOutput)
-        self.developer = self._init_raven(logger, self.args.confDir, "developer", expert_default_args, structure=CodingOutput)
-        self.tester = self._init_raven(logger, self.args.confDir, "tester", expert_default_args, structure=TestingOutput)
+        self.analyst = self._init_expert(logger, self.args.confDir, "analyst", expert_default_args, structure=AnalystOutput)
+        self.developer = self._init_expert(logger, self.args.confDir, "developer", expert_default_args, structure=CodingOutput)
+        self.tester = self._init_expert(logger, self.args.confDir, "tester", expert_default_args, structure=TestingOutput)
         self._setup_graph()
 
     def _setup_graph(self):
@@ -64,7 +64,7 @@ class Wolfpack:
         graph.set_entry_point("analyst")
         self.compiled_graph = graph.compile()
 
-    def _init_raven(self, logger, conf_dir, type, default_arg_vals, structure=None):
+    def _init_expert(self, logger, conf_dir, type, default_arg_vals, structure=None):
         config_path = os.path.join(conf_dir, type, "config.json")
         with open(config_path, "r") as f:
             expert_config = json.load(f)
@@ -72,31 +72,23 @@ class Wolfpack:
         args = default_arg_vals
         args.update(args_dict)
         logger.info(f"Configuration for {type} - {args}")
-        return Raven(logger, structure=structure, **args)
+        return Expert(logger, structure=structure, **args)
 
     def analyst_node(self, state):
-        payload = {"messages": [{"role": "user", "content": state["input"]}], "user_id": state["user_id"], "persona": getattr(self.analyst.args, "persona", None)}
-        response = self.analyst.invoke(payload)
+        response = self.analyst.handle_question(state["input"], state["user_name"])
         state["analyst_output"] = response
         return state
     
     def developer_node(self, state):
-        analyst = state.get("analyst_output")
-        analyst_output = f"Analysis:\n{getattr(analyst, 'analysis', '')}\n\nCode-generation Requirements:\n{getattr(analyst, 'codeGenerationRequirements', '')}"
-        content = f"Interactions:\n{analyst_output}\n\nQuestion:\n{state['input']}"
-        payload = {"messages": [{"role": "user", "content": content}], "user_id": state["user_id"], "persona": getattr(self.developer.args, "persona", None)}
-        response = self.developer.invoke(payload)
+        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nCode-generation Requirements:\n{state["analyst_output"].codeGenerationRequirements}"
+        response = self.developer.handle_question(state["input"], state["user_name"], interactions=analyst_output)
         state["developer_output"] = response
         return state
     
     def tester_node(self, state):
-        analyst = state.get("analyst_output")
-        analyst_output = f"Analysis:\n{getattr(analyst, 'analysis', '')}\n\nTest-generation Requirements:\n{getattr(analyst, 'testGenerationRequirements', '')}"
-        content = f"Interactions:\n{analyst_output}\n\nQuestion:\n{state['input']}"
-        payload = {"messages": [{"role": "user", "content": content}], "user_id": state["user_id"], "persona": getattr(self.tester.args, "persona", None)}
-        response = self.tester.invoke(payload)
+        analyst_output = f"Analysis:\n{state["analyst_output"].analysis}\n\nTest-generation Requirements:\n{state["analyst_output"].testGenerationRequirements}"
+        response = self.tester.handle_question(state["input"], state["user_name"], interactions=analyst_output)
         state["tester_output"] = response
-        return state
     
     def implementor_node(self, state):
         state["implementor_output"] = "I am not ready to configure yet"
@@ -151,6 +143,6 @@ class Wolfpack:
         return state
 
     def handle_request(self, request, name):
-        result = self.compiled_graph.invoke({"input": request, "user_id": name})
+        result = self.compiled_graph.invoke({"input": request, "user_name": name})
         return result
 

@@ -5,29 +5,18 @@ from pydantic import BaseModel
 import logging
 import json
 import os
-import expert_cli
+
+import raven_cli
 import wolfpack_cli as wolfpack_cli
-from expert_cli import parse_args as default_values
+from raven_cli import parse_args as default_values
 from knowledgexpert.wolfpack import Wolfpack
-from knowledgexpert.expert import Expert
 from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
-# NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
-
-def init(expert_args_dict:dict[str,any], wolfpack_args_dict:dict[str,any]):
+def init(wolfpack_args_dict:dict[str,any]):
     global expert, wolfpack
     log_level = logging.getLevelName(logger.getEffectiveLevel())
-    expert = init_expert(expert_args_dict)
     wolfpack = init_wolfpack(wolfpack_args_dict)
-
-def init_expert(args_dict):
-    args_dict = resolve_env_vars(args_dict)
-    default_args = vars(expert_cli.parse_args([]))
-    args = default_args
-    args.update(args_dict) 
-    logger.info("Expert args: %s", args)
-    return Expert(logger, structure=None, **args)
 
 def init_wolfpack(args_dict):
     args_dict = resolve_env_vars(args_dict)
@@ -40,13 +29,10 @@ def init_wolfpack(args_dict):
 app = FastAPI()
 logger = logging.getLogger()
 
-with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "expert", "config.json"), "r") as f:
-    expert_config = json.load(f)
-
 with open(os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "wolfpack", "config-copilot.json"), "r") as f:
     wolfpack_config = json.load(f)
 
-init(expert_config, wolfpack_config)
+init(wolfpack_config)
 
 class QueryRequest(BaseModel):
     query: str
@@ -124,13 +110,6 @@ def format_response(response:dict)->str:
     if "file_writer_output" in response:
         result += f"\n\n---\n\n## File Writer Tool Output:\n\n{format_file_writer_output(response["file_writer_output"])}"
     return result
-
-@app.post("/ask/knowledgexpert")
-def ask_knowledgexpert(request: QueryRequest):
-    logger.debug(f"Received knowledgexpert query: {request.query}, session_id: {request.session_id}")
-    result = expert.handle_question(request.query, request.session_id)
-    logger.debug(f"handle_question result: {result}")
-    return {"result": str(result)}
 
 @app.post("/ask/wolfpack")
 def ask_wolfpack(request: QueryRequest):

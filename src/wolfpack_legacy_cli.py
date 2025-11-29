@@ -2,15 +2,15 @@ import logging
 import argparse
 import os
 
-from knowledgexpert.wolfpack import Wolfpack
-from raven_cli import parse_args as default_values
+from knowledgexpert.wolfpack_legacy import Wolfpack
+from expert_cli import parse_args as default_values
 from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="Wolfpack LLM Assistant")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
-    parser.add_argument("--confDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "wolfpack"), help="Directory containing configurations (default: ~/.knowledgexpert/conf/wolfpack)")
+    parser.add_argument("--confDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "conf", "wolfpack"), help="Directory containing configurations (default: ~/.knowledgexpert/conf/wolfpack-legacy)")
     parser.add_argument("--workspaceDir", default=os.path.join(os.path.expanduser("~"), ".knowledgexpert", "workspace", "wolfpack"), help="Directory for workspace (default: ~/.knowledgexpert/workspace/wolfpack)")
     parser.add_argument('--requestPath', type=str, default=None, help='Path to file containing the request/query')
     parser.add_argument('--skipWriter', action='store_true', help='Skip writing files to disk (default: False)')
@@ -24,7 +24,7 @@ def process(args, logger, wolfpack):
         with open(args.requestPath, 'r', encoding='utf-8') as f:
             user_query = f.read().strip()
     else:
-        history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "wolfpack.history")
+        history_file = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history", "wolfpack-legacy.history")
         try:
             history_dir = os.path.dirname(history_file)
             os.makedirs(history_dir, exist_ok=True)

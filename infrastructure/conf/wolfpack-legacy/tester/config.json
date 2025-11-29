@@ -1,11 +1,9 @@
 {
-    "promptDir": "${HOME}/.knowledgexpert/conf/wolfpack/tester",
+    "promptDir": "${HOME}/.knowledgexpert/conf/wolfpack-legacy/tester",
 
     "llmModel": "gpt-4.1-mini",
     "llmApiEndpoint": "https://api.openai.com/v1",
 
-    "skipMcpTools": true,
-    "retrievalType": "agenticRag",
     "embeddings": [
         {
             "embeddingId": "code",
@@ -31,8 +29,10 @@
         }],
     "ensembleWeights": [1],
 
-    "vectorToolName": "RulesInformationVectorDb",
-    "vectorToolDescription": "A vector database that contains documentation for the auto insurance rules application. It includes documentation on how auto insurance claims are processed. In addition, it contains information on the unit testing tool for testing rules.",
-
-    "contextPaths": []
+    "contextPaths": [],
+    
+    "useGraphRag": false,
+ 
+    "verbose": false,
+    "disableHistory": true
 }
