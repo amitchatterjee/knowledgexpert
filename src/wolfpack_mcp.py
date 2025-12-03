@@ -50,7 +50,7 @@ mcp = FastMCP(name="Wolfpack MCP Server")
 def request_wolfpack(request: QueryRequest) -> WolfpackResponse:
     logger.debug(
         f"Received Wolfpack query: {request.query}, session_id: {request.session_id}")
-    response = wolfpack.handle_request(request.query, request.session_id)
+    response = wolfpack.invoke(request.query, request.session_id)
     return build_wolfpack_response(response)
 
 @mcp.custom_route("/health", methods=["GET"])

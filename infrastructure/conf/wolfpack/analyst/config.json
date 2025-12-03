@@ -1,7 +1,7 @@
 {
     "promptDir": "${HOME}/.knowledgexpert/conf/wolfpack/analyst",
-    "llmModel": "anthropic:claude-sonnet-4-20250514",
-    "llmApiEndpoint": "https://api.anthropic.com",
+    "llmModel": "gpt-4.1-mini",
+    "llmApiEndpoint": "https://api.openai.com/v1",
     "skipMcpTools": true,
     "retrievalType": "agenticRag",
     "embeddings": [
@@ -41,9 +41,9 @@
         }
     ],
     "ensembleWeights": [
-        0.1,
-        0.8,
-        0.1
+        0.05,
+        0.75,
+        0.2
     ],
     "vectorToolName": "RulesInformationVectorDb",
     "vectorToolDescription": "A vector database that contains documentation for the Knowledgenet rules engine and auto insurance rules application. It includes documentation and code snippets about fundamental concepts of the rules engine and rules for adjudicating auto insurance claims. It also contains code snippets of the data structures and rules. In addition, it contains information on the unit testing tool for testing rules.",

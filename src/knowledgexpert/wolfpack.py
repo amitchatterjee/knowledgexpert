@@ -41,19 +41,19 @@ write_files = StructuredTool.from_function(
 )
 
 class Wolfpack:
-    def __init__(self, logger:Logger, expert_default_args:dict, **kwargs):
+    def __init__(self, logger:Logger, raven_default_args:dict, checkpointer=None, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
 
         if not os.path.exists(self.args.workspaceDir):
             os.makedirs(self.args.workspaceDir, exist_ok=True)
 
-        self.analyst = self._init_raven(logger, self.args.confDir, "analyst", expert_default_args, structure=AnalystOutput)
-        self.developer = self._init_raven(logger, self.args.confDir, "developer", expert_default_args, structure=CodingOutput)
-        self.tester = self._init_raven(logger, self.args.confDir, "tester", expert_default_args, structure=TestingOutput)
-        self._setup_graph()
+        self.analyst = self._init_raven(logger, self.args.confDir, "analyst", raven_default_args, structure=AnalystOutput)
+        self.developer = self._init_raven(logger, self.args.confDir, "developer", raven_default_args, structure=CodingOutput)
+        self.tester = self._init_raven(logger, self.args.confDir, "tester", raven_default_args, structure=TestingOutput)
+        self._setup_graph(checkpointer)
 
-    def _setup_graph(self):
+    def _setup_graph(self, checkpointer):
         graph = StateGraph(Dict[str, Any])
         graph.add_node("analyst", RunnableLambda(self.analyst_node))
         graph.add_node("request_router", RunnableLambda(self.request_router_node))
@@ -62,7 +62,7 @@ class Wolfpack:
         graph.add_edge("request_router", END)
 
         graph.set_entry_point("analyst")
-        self.compiled_graph = graph.compile()
+        self.compiled_graph = graph.compile(checkpointer=checkpointer)
 
     def _init_raven(self, logger, conf_dir, type, default_arg_vals, structure=None):
         config_path = os.path.join(conf_dir, type, "config.json")
@@ -150,7 +150,9 @@ class Wolfpack:
         state["file_writer_output"] = result
         return state
 
-    def handle_request(self, request, name):
-        result = self.compiled_graph.invoke({"input": request, "user_id": name})
+    def invoke(self, request, user_id, thread_id=None):
+        config={"configurable": {"thread_id": thread_id}}
+        result = self.compiled_graph.invoke({"input": request, "user_id": user_id},
+                                            config=config)
         return result
 

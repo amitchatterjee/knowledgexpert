@@ -14,8 +14,7 @@ from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
 
 def init(wolfpack_args_dict:dict[str,any]):
-    global expert, wolfpack
-    log_level = logging.getLevelName(logger.getEffectiveLevel())
+    global wolfpack
     wolfpack = init_wolfpack(wolfpack_args_dict)
 
 def init_wolfpack(args_dict):
@@ -114,5 +113,5 @@ def format_response(response:dict)->str:
 @app.post("/ask/wolfpack")
 def ask_wolfpack(request: QueryRequest):
     logger.debug(f"Received wolfpack query: {request.query}, session_id: {request.session_id}")
-    response = wolfpack.handle_request(request.query, request.session_id)
+    response = wolfpack.invoke(request.query, request.session_id, thread_id=request.session_id)
     return {"result": format_response(response)}

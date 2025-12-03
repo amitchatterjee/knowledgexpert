@@ -172,21 +172,21 @@ curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
 # Execute Raven using command line arguments:
 ###############################################
 # Use openai/gpt4 model. Utilize Opensearch MCP client
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
 
 # Use openai/gpt4 model. Utilize agenticRag
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
 
 # Use gemma as general llm running on ollama. There is no cost to use it but it is slooooow. Use 2stepRag - gemma does not support tools yet.
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --skipMcpTools --retrievalType 2stepRag --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --skipMcpTools --retrievalType 2stepRag --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest"
 
 # Use anthropic claude as the llm with MCP
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure
 
 ################################################
 # Load command line params from a config file:
 ###############################################
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/wolfpack/analyst --outputType 'knowledgexpert.structures.AnalystOutput'
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --confDir $KNOWLEDGEXPERT_HOME/infrastructure/conf/wolfpack/analyst --outputType 'knowledgexpert.structures.AnalystOutput'
 
 
 # This example demonstrates how to use --interactions to pass information from one expert to another
@@ -209,16 +209,16 @@ EOF
 ## Execute Wolfpack CLI
 ```bash
 
-# Interactive
 python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py
 
+# Start with an initial request read from a file
 python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/wolfpack/prompt-1.txt
 
 ```
 
 ## Execute Bookworm CLI
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --documents "$KNOWLEDGEXPERT_HOME/infrastructure/data/insurance-docs;*.md"
+python $KNOWLEDGEXPERT_HOME/src/bookworm_cli.py --checkpointerDir $HOME/.knowledgexpert/history --documents "$KNOWLEDGEXPERT_HOME/infrastructure/data/insurance-docs;*.md"
 
 ```
 
