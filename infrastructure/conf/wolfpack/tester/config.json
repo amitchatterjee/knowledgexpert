@@ -5,7 +5,7 @@
     "llmApiEndpoint": "https://api.openai.com/v1",
 
     "skipMcpTools": true,
-    "retrievalType": "agenticRag",
+    "retrievalType": "2stepRag",
     "embeddings": [
         {
             "embeddingId": "code",
@@ -30,9 +30,5 @@
             "embeddingId": "doc"
         }],
     "ensembleWeights": [1],
-
-    "vectorToolName": "RulesInformationVectorDb",
-    "vectorToolDescription": "A vector database that contains documentation for the auto insurance rules application. It includes documentation on how auto insurance claims are processed. In addition, it contains information on the unit testing tool for testing rules.",
-
     "contextPaths": []
 }
