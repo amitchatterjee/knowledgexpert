@@ -86,6 +86,8 @@ def format_tester_output(tester_output: TestingOutput) -> str:
                     codeblock = 'csv'
                 elif ext == '.json':
                     codeblock = 'json'
+                elif ext == '.edi':
+                    codeblock = 'edi'
                 else:
                     codeblock = ''
                 lines.append(f"#### {file_output.fileName}\n\n```{codeblock}")
