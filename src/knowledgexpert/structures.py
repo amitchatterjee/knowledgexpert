@@ -38,8 +38,8 @@ class CodingOutput(BaseModel):
         return f"{'\n\n'.join(fields)}"
 
 class TestFileOutput(BaseModel):
-    fileName: str = Field(description="file name containing test data. Must have extension - .edi and must not include folder names")
-    content: str = Field(description="Content in EDI format")
+    fileName: str = Field(description="file name of the test data/code")
+    content: str = Field(description="Content of the test data/code")
 
 class TestingOutput(BaseModel):
     summary: Optional[str] = Field("A one-line summary of the generated test data")

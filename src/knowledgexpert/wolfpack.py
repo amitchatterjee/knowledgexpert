@@ -24,11 +24,11 @@ def write_files_tool(directory: str, ruleset: str, file_name: str, code: str, ru
             file_list.append(full_path)
     
     if test_data:
-        test_dir = os.path.join(directory, 'test', 'vector', rule_name)
-        os.makedirs(test_dir, exist_ok=True)
+        base_dir = os.path.join(directory, 'test')
         for each in test_data:
             file_name = each.fileName
-            full_path = os.path.join(test_dir, file_name)
+            full_path = os.path.join(base_dir, file_name)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
             with open(full_path, "w") as f:
                 f.write(each.content)
                 file_list.append(full_path)
