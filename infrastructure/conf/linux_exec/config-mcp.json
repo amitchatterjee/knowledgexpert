@@ -1,0 +1,12 @@
+{
+  "working_dir": "${HOME}/git/knowledgexpert/infrastructure/data/insurance-docs",
+  "allowed_commands": [
+    "ls",
+    "cat",
+    "pwd",
+    "echo",
+    "find",
+    "grep",
+    "wc"
+  ]
+}

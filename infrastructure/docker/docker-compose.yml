@@ -67,7 +67,6 @@ services:
       - 9200:9200 # REST API
       #- 9600:9600 # Performance Analyzer
 
-
 volumes:
   ollama_data:
     driver: local

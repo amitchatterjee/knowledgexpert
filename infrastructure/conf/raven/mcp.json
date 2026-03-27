@@ -7,4 +7,10 @@
             "Authorization": "Basic YWRtaW46b3BlblNlYXJjaCQyMDI1"
         }
 	}
+    ,
+    "ShellCommandExecutor": {
+        "transport": "streamable_http",
+        "url": "http://localhost:8002/mcp",
+        "headers": {}
+    }
 }

@@ -55,7 +55,7 @@ sudo dnf install sqlite
 
 ### Build docker container for opensearch
 ```bash
-docker build -t opensearch-with-mcp:latest  -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/Dockerfile .
+docker build -t opensearch-with-mcp:latest  -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/opensearch-mcp/Dockerfile $KNOWLEDGEXPERT_HOME/infrastructure/docker/opensearch-mcp
 ```
 
 ## Setup the infrastructure components needed for this service
@@ -75,6 +75,8 @@ This is needed to load the knowledge base and to run the experts.
 
 ```bash
 docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
+
+fastmcp run "$KNOWLEDGEXPERT_HOME/src/linux_exec_mcp.py" --transport streamable-http --port 8002 --host 0.0.0.0 --log-level INFO --
 ```
 
 ## Build the knowledge base
@@ -174,8 +176,8 @@ curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
 # Use openai/gpt4 model. Utilize Opensearch MCP client
 python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
 
-# Use openai/gpt4 model. Utilize agenticRag
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-4.1-mini" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
+# Use openai/gpt5 model. Utilize agenticRag
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
 
 # Use gemma as general llm running on ollama. There is no cost to use it but it is slooooow. Use 2stepRag - gemma does not support tools yet.
 python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --skipMcpTools --retrievalType 2stepRag --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest"
