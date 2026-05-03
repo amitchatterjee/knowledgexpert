@@ -44,7 +44,10 @@ services:
     restart: unless-stopped
 
   opensearch:
-    image: opensearch-with-mcp:latest 
+    image: opensearch-with-mcp:latest
+    build:
+      context: ./opensearch-mcp
+      dockerfile: Dockerfile
     container_name: opensearch
     environment:
       - discovery.type=single-node
@@ -66,6 +69,30 @@ services:
     ports:
       - 9200:9200 # REST API
       #- 9600:9600 # Performance Analyzer
+
+  linux-exec-mcp:
+    image: linux-exec-mcp:latest
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/linux-exec-mcp/Dockerfile
+    container_name: linux-exec-mcp
+    ports:
+      - "8002:8002"
+    volumes:
+      # Mount the work directory from the repo (insurance docs)
+      - ../../infrastructure/data:/work:ro
+      # Mount the user's Knowledgexpert config directory into the mcp user's home
+      - ${HOME}/.knowledgexpert:/home/mcp/.knowledgexpert:rw
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  knowledgexpert-base:
+    profiles: ["build"]
+    image: knowledgexpert-base:latest
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/knowledgexpert-base/Dockerfile
 
 volumes:
   ollama_data:

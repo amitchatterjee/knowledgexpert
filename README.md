@@ -17,15 +17,6 @@ Add the following line to your `~/.bashrc` file:
 echo 'source ~/ai-venv/bin/activate' >> ~/.bashrc
 ```
 
-The virtual environment will now automatically activate when you open a new terminal.
-### Verification
-
-Verify the virtual environment is active by checking Python's location:
-```bash
-which python
-# Should output: ~/ai-venv/bin/python
-```
-
 ### Add the necessary environment variables to ~/.bashrc
 ```bash
 # Change as needed
@@ -53,34 +44,48 @@ pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
 sudo dnf install sqlite
 ```
 
-### Build docker container for opensearch
+### Build infrastructure components
+
+#### Docker container for opensearch
+Build the opensearch image using Docker Compose (uses `infrastructure/docker/opensearch-mcp/Dockerfile`):
+
 ```bash
-docker build -t opensearch-with-mcp:latest  -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/opensearch-mcp/Dockerfile $KNOWLEDGEXPERT_HOME/infrastructure/docker/opensearch-mcp
+docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml build opensearch
 ```
 
-## Setup the infrastructure components needed for this service
+#### Docker container for knowledgexpert base image
+The image is intended for reuse across multiple MCP services.
 
-### Setup the models, etc.
+```bash
+docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml build knowledgexpert-base
+```
+
+#### Docker container for linux-exec-mcp
+The Linux Exec MCP service exposes a FastMCP tool named `ShellCommandExecutor` that validates and executes allowed shell commands from the configured working directory, returning `stdout`, `stderr`, and the command exit code.
+
+```bash
+docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml build linux-exec-mcp
+```
+
+#### Setup the models, etc.
 ```bash
 docker exec -it ollama ollama pull gemma:latest
 ```
-
-### Configure parameters
+#### Configure parameters symlink
 ```bash
 ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```
+## Bring up and initialize Knowledge stores
 
-## Bring up Servers
-This is needed to load the knowledge base and to run the experts.
+### Bring up the infrastructure services
 
 ```bash
+# Start services
 docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
-
-fastmcp run "$KNOWLEDGEXPERT_HOME/src/linux_exec_mcp.py" --transport streamable-http --port 8002 --host 0.0.0.0 --log-level INFO --
 ```
 
-## Build the knowledge base
-Run the following commands:
+### Build the vector/graph knowledge stores
+
 ```bash
 
 # Graph store
@@ -122,7 +127,7 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'framework_docs
     --clear --store --chunkSize 4800 --chunkOverlap 720
 ```
 
-## Query the vector database
+#### Query the vector database
 ```bash
 python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --collectionName 'all_collection'
 
@@ -130,9 +135,9 @@ python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "https://api.o
 
 ```
 
-## Setup opensearch MCP
-```bash
+### Setup opensearch MCP knowledge stores
 
+```bash
 # get available plugins
 curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSearch$2025'
 
