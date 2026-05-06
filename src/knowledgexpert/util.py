@@ -2,13 +2,10 @@ import re
 import os
 
 import string
-from langchain_community.document_loaders import TextLoader
-from langchain_community.vectorstores import FAISS
 from langchain.chat_models.base import init_chat_model
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_openai import OpenAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def replacer(match):
     env_var = match.group(1)
@@ -45,36 +42,7 @@ def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
     return resolved
 
 
-def build_faiss_store_from_context(context_paths, embeddings):
-    additional_context = []
-    for path in context_paths:
-        if os.path.isdir(path):
-            for root, _, files in os.walk(path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    if not is_text_file(file_path):
-                        continue
-                    try:
-                        loader = TextLoader(
-                            file_path, encoding="utf-8", autodetect_encoding=True)
-                        additional_context.extend(loader.load())
-                    except Exception:
-                        continue
-        elif os.path.isfile(path):
-            try:
-                loader = TextLoader(
-                    path, encoding="utf-8", autodetect_encoding=True)
-                additional_context.extend(loader.load())
-            except Exception:
-                continue
 
-    if additional_context:
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000, chunk_overlap=100)
-        docs = text_splitter.split_documents(additional_context)
-        faiss_store = FAISS.from_documents(docs, embeddings)
-        return faiss_store
-    return None
 
 
 def is_text_file(filepath, blocksize=512):

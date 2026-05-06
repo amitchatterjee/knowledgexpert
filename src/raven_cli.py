@@ -42,8 +42,7 @@ def parse_args(args_list=None):
     parser.add_argument("--searchAlgorithm", type=str, default="similarity", help="Default search algorithm for retriever (e.g., 'similarity', 'mmr', etc.)")
     parser.add_argument("--scoreThreshold", type=float, default=None, help="Default score threshold for similarity_score_threshold search (optional)")
     parser.add_argument("--k", type=int, default=None, help="Default k (nearest neighbor) value")
-    parser.add_argument("--contextPaths", nargs="+", default=[], help="List of file/folder paths for additional context")
-    parser.add_argument("--contextPathsEmbedding", default='default', help="Embedding id to use for files in the contextPaths")
+    
     parser.add_argument("--ensembleWeights", nargs=2, type=float, default=[], help="Weights for ensemble retriever (default: [])")
     parser.add_argument("--vectorToolName", default="AutoDoc", help="If agentic RAG option is selected, the name of the vector tool")
     parser.add_argument("--vectorToolDescription", default="Search and return information from the company vector db", help="If agentic RAG option is selected, the description for the vector tool")

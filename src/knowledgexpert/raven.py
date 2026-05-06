@@ -22,7 +22,7 @@ from langchain.messages import ToolMessage
 from langchain.agents import AgentState
 
 from knowledgexpert.util import setup_llm
-from knowledgexpert.util import setup_embedding, build_faiss_store_from_context
+from knowledgexpert.util import setup_embedding
 
 class Answer(BaseModel):
     summary: str
@@ -119,7 +119,7 @@ class Raven:
                 self.args.mcpConfig, insecure=self.args.mcpInsecure)))
 
         if not self.args.skipRetrieval:
-            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.contextPaths, self.args.contextPathsEmbedding, self.args.embeddings)
+            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.embeddings)
             if self.args.retrievalType == 'agenticRag':
                 retriever_tool = create_retriever_tool(self.retriever,
                                                        name=self.args.vectorToolName,
@@ -206,17 +206,11 @@ class Raven:
             "Loaded tools based on configuration file: %s", mcp_config)
         return tools
 
-    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, context_paths, context_paths_embedding, embeddings):
+    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, embeddings):
         embeddings_dict = {}
         for embedding in embeddings:
             embeddings_dict[embedding['embeddingId']
                             ] = setup_embedding(embedding)
-
-        faiss_store = None
-        if context_paths:
-            faiss_store = build_faiss_store_from_context(
-                context_paths, embeddings_dict[context_paths_embedding])
-
         chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
         retrievers = []
         weights = []
@@ -237,14 +231,7 @@ class Raven:
                 weights.append(ensemble_weights[i])
             else:
                 weights.append(1.0)
-        # Optionally add faiss_store as another retriever
-        if faiss_store:
-            retrievers.append(faiss_store.as_retriever())
-            # If ensemble_weights has an extra value, use it, else default to 1.0
-            if ensemble_weights and len(ensemble_weights) > len(base_collections):
-                weights.append(ensemble_weights[len(base_collections)])
-            else:
-                weights.append(1.0)
+        # No FAISS retriever support: only use configured Chroma retrievers
         # If only one retriever, return it directly
         if len(retrievers) == 1:
             return retrievers[0]

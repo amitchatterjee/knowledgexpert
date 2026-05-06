@@ -78,17 +78,3 @@ class CodingAdvice(BaseModel):
             if value is not None and value != "" and value != []:
                 fields.append(f"{field}:\n{value}")
         return f"{'\n\n'.join(fields)}"
-
-class BookWormOutput(BaseModel):
-    informationFound: bool = Field(default=False, description="True if relevant information is found for this document segment")
-    summary: Optional[str] = Field(default=None, description="A one-line summary of the findings")
-    explanation: Optional[str] = Field(default=None, 
-        description="Detailed explanation of the findings")
-    references: Optional[list[str]] = Field(default=None,
-        description="A list of URLs containing the sources from where the findings were derived")
-    def __str__(self):
-        fields = []
-        for field, value in self.__dict__.items():
-            if value is not None and value != "" and value != []:
-                fields.append(f"{field}:\n{value}")
-        return f"{'\n\n'.join(fields)}"
