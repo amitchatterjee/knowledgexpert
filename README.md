@@ -161,7 +161,7 @@ curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
 # Load some data
 curl -sS -H "Content-Type: application/x-ndjson" \
   -u 'admin:openSearch$2025' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/data/msrp/toyota-2025-msrp-bulk.ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/data/msrp/toyota-2025-msrp-bulk.ndjson" \
   --insecure \
   "https://localhost:9200/_bulk"
 
