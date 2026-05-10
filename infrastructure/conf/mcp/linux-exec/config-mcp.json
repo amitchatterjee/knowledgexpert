@@ -1,5 +1,5 @@
 {
-  "working_dir": "${HOME}/git/knowledgexpert/data/insurance-docs",
+  "working_dir": "${HOME}/git/knowledgexpert/data/linux-exec/insurance-docs",
   "allowed_commands": [
     "ls",
     "cat",

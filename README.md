@@ -68,8 +68,10 @@ docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml 
 ```
 
 #### Setup the models, etc.
+Pull the latest models, etc. periodically as shown below:
+
 ```bash
-docker exec -it ollama ollama pull gemma:latest
+docker exec -it ollama ollama pull gemma4:latest
 ```
 
 #### Configure parameters symlink
@@ -149,7 +151,7 @@ curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025
 # create agents
 curl --insecure \
   -H "Content-Type: application/x-ndjson" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/opensearch/agent.ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/conf/mcp/opensearch/agent.ndjson" \
   "https://localhost:9200/_plugins/_ml/agents/_register" \
   -u 'admin:openSearch$2025'
 
@@ -158,12 +160,12 @@ curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
   --insecure \
   -u 'admin:openSearch$2025' \
   -H 'Content-Type: application/json' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/opensearch/mcp-tools.json"
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/conf/mcp/opensearch/mcp-tools.json"
 
 # Load msrp data
 curl -sS -H "Content-Type: application/x-ndjson" \
   -u 'admin:openSearch$2025' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/data/msrp/toyota-2025-msrp-bulk.ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/data/opensearch/msrp/toyota-2025-msrp-bulk.ndjson" \
   --insecure \
   "https://localhost:9200/_bulk"
 
@@ -171,11 +173,12 @@ curl -sS -H "Content-Type: application/x-ndjson" \
 curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
   -H "Content-Type: application/json" \
   -H "Authorization: Basic YWRtaW46b3BlblNlYXJjaCQyMDI1" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/opensearch/msrp-mappings.json"
+  --data-binary @"$KNOWLEDGEXPERT_HOME/data/opensearch/msrp/msrp-mappings.json"
 
 ```
 
 ## Execute Raven CLI
+
 ```bash
 ################################################
 # Execute Raven using command line arguments:
@@ -186,11 +189,15 @@ python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgex
 # Use openai/gpt5 model. Utilize agenticRag
 python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
 
+# Use openai/gpt5 model. Utilize linux-exec MCP client
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is the minimum liability insurance required by the state of North Carolina for a driver's license?"
+
+
 # Use anthropic claude as the llm with MCP
 python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure
 
-# Use gemma as general llm running on ollama. There is no cost to use it but it is slooooow. Use 2stepRag - gemma does not support tools yet.
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --skipMcpTools --retrievalType 2stepRag --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma:latest"
+# Use gemma as general llm running on ollama. There is no cost to use it but it is slooooow.
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --skipMcpTools --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma4:latest" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer'
 
 ################################################
 # Load command line params from a config file:
