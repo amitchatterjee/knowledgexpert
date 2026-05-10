@@ -1,3 +1,8 @@
+"""Deprecated module for the legacy Expert pipeline.
+
+This module is retained for backward compatibility and will be removed in a future release.
+"""
+
 from argparse import Namespace
 import json
 import logging
@@ -37,6 +42,10 @@ os.makedirs(hist_dir, exist_ok=True)
 default_conf_dir = os.path.join(os.path.expanduser(
     "~"), ".knowledgexpert", "conf", "expert")
 
+DEPRECATION_MESSAGE = (
+    "DEPRECATED: knowledgexpert.expert.Expert is a legacy component and may be removed in a future release."
+)
+
 class Expert:
     def __init__(self, logger: Logger, structure:Any=None, **kwargs):       
         self.args = Namespace(**kwargs)
@@ -44,6 +53,8 @@ class Expert:
         self.structure = structure
         self.prompt_dir = self.args.promptDir if self.args.promptDir else default_conf_dir
         self.embeddings_dict = {}
+
+        self.logger.warning(DEPRECATION_MESSAGE)
 
         logging.getLogger("langchain").setLevel(self.logger.level)
         # Suppress HTTP request/response messages

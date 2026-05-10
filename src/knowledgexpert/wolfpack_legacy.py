@@ -1,3 +1,8 @@
+"""Deprecated module for the legacy Wolfpack orchestration pipeline.
+
+This module is retained for backward compatibility and will be removed in a future release.
+"""
+
 from argparse import Namespace
 import json
 from logging import Logger
@@ -10,6 +15,10 @@ from langchain_core.tools import StructuredTool
 from knowledgexpert.util import resolve_env_vars
 from knowledgexpert.expert import Expert
 from knowledgexpert.structures import AnalystOutput, CodingOutput, TestingOutput
+
+DEPRECATION_MESSAGE = (
+    "DEPRECATED: knowledgexpert.wolfpack_legacy.Wolfpack is a legacy component and may be removed in a future release."
+)
 
 def write_files_tool(directory: str, ruleset: str, file_name: str, code: str, rule_name: str, test_data: list) -> str:
     file_list = []
@@ -44,6 +53,8 @@ class Wolfpack:
     def __init__(self, logger:Logger, expert_default_args:dict, **kwargs):
         self.args = Namespace(**kwargs)
         self.logger = logger
+
+        self.logger.warning(DEPRECATION_MESSAGE)
 
         if not os.path.exists(self.args.workspaceDir):
             os.makedirs(self.args.workspaceDir, exist_ok=True)

@@ -1,5 +1,5 @@
 {
-  "working_dir": "${HOME}/git/knowledgexpert/data/linux-exec/insurance-docs",
+  "working_dir": "/work",
   "allowed_commands": [
     "ls",
     "cat",
@@ -8,6 +8,16 @@
     "find",
     "grep",
     "wc",
-    "sed"
+    "sed",
+    "tree",
+    "stat",
+    "file",
+    "head",
+    "tail",
+    "cut",
+    "awk",
+    "tr",
+    "sort",
+    "xargs"
   ]
 }

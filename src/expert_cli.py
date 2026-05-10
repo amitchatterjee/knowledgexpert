@@ -12,6 +12,9 @@ from knowledgexpert.expert import Expert
 from knowledgexpert.util import resolve_env_vars, embedding_mapper
 
 # NOTE the API_KEY environment variable specific to LLM/Embedding provider must be set for this application to work
+DEPRECATION_DISCLAIMER = (
+    "[DEPRECATED] expert_cli.py is a legacy CLI and may be removed in a future release."
+)
 
 def print_structured_output(out, console):
     if out.summary:
@@ -41,6 +44,7 @@ def serve_cli(expert, interactions):
     except Exception as e:
         logging.warning(f"Could not ensure history file {history_file}: {e}")
     history = FileHistory(history_file)
+    console.print(DEPRECATION_DISCLAIMER)
     console.print("Knowledgenet assistant (Graph + Vector RAG). Type 'exit' to quit.")
     while True:
         user_query = prompt(f"\n{name}:> ", history=history).strip()
@@ -140,6 +144,7 @@ def parse_args(args_list=None):
     return args
 
 if __name__ == "__main__":
+    print(DEPRECATION_DISCLAIMER)
     args = parse_args()
 
     base_config = {}

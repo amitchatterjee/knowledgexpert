@@ -7,6 +7,10 @@ from expert_cli import parse_args as default_values
 from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
 
+DEPRECATION_DISCLAIMER = (
+    "[DEPRECATED] wolfpack_legacy_cli.py is a legacy CLI and may be removed in a future release."
+)
+
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="Wolfpack LLM Assistant")
     parser.add_argument("--log", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set log level (default: INFO)")
@@ -44,6 +48,7 @@ def process(args, logger, wolfpack):
         print(f"{key}:\n{'-'*20}\n{value}\n")
 
 if __name__ == "__main__":
+    print(DEPRECATION_DISCLAIMER)
     args = parse_args()
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     logging.basicConfig(level=log_level, format='%(asctime)s %(levelname)s %(message)s')
