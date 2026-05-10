@@ -80,7 +80,7 @@ services:
       - "8002:8002"
     volumes:
       # Mount the work directory from the repo (insurance docs)
-      - ../../infrastructure/data:/work:ro
+      - ../../data:/work:ro
       # Mount the user's Knowledgexpert config directory into the mcp user's home
       - ${HOME}/.knowledgexpert:/home/mcp/.knowledgexpert:rw
     environment:
