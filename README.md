@@ -71,11 +71,13 @@ docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml 
 ```bash
 docker exec -it ollama ollama pull gemma:latest
 ```
+
 #### Configure parameters symlink
 ```bash
 ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```
-## Bring up and initialize Knowledge stores
+
+## Bring infrastructure components up and initialize Knowledge stores
 
 ### Bring up the infrastructure services
 
@@ -147,7 +149,7 @@ curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025
 # create agents
 curl --insecure \
   -H "Content-Type: application/x-ndjson" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-agent.ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/opensearch/agent.ndjson" \
   "https://localhost:9200/_plugins/_ml/agents/_register" \
   -u 'admin:openSearch$2025'
 
@@ -156,9 +158,9 @@ curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
   --insecure \
   -u 'admin:openSearch$2025' \
   -H 'Content-Type: application/json' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-mcp-tools.json"
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/opensearch/mcp-tools.json"
 
-# Load some data
+# Load msrp data
 curl -sS -H "Content-Type: application/x-ndjson" \
   -u 'admin:openSearch$2025' \
   --data-binary @"$KNOWLEDGEXPERT_HOME/data/msrp/toyota-2025-msrp-bulk.ndjson" \
@@ -169,7 +171,7 @@ curl -sS -H "Content-Type: application/x-ndjson" \
 curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
   -H "Content-Type: application/json" \
   -H "Authorization: Basic YWRtaW46b3BlblNlYXJjaCQyMDI1" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/mcp/opensearch-msrp-mappings.json"
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/opensearch/msrp-mappings.json"
 
 ```
 
