@@ -3,7 +3,6 @@ import os
 
 import string
 from langchain.chat_models.base import init_chat_model
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
@@ -40,9 +39,6 @@ def resolve_env_vars(args_dict: dict[str, str]) -> dict[str, str]:
     for k, v in args_dict.items():
         resolved[k] = resolve_value(v)
     return resolved
-
-
-
 
 
 def is_text_file(filepath, blocksize=512):
@@ -104,4 +100,4 @@ def setup_embedding(embedding):
             model_name=embedding['embeddingModel'],
             api_key="")
     else:
-        return HuggingFaceEmbeddings(model_name=embedding['embeddingModel'])
+        raise ValueError(f"embeddingApiUrl is required for huggingface provider (embeddingId: {embedding.get('embeddingId', 'unknown')})")

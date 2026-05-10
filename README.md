@@ -38,13 +38,14 @@ source ~/.bashrc
 
 ### Install pre-requisite software
 ```bash
+pip install --upgrade pip
 pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
 
 # Required for looking into checkpointer
 sudo dnf install sqlite
 ```
 
-### Build infrastructure components
+### Build Docker containers
 
 #### Docker container for opensearch
 Build the opensearch image using Docker Compose (uses `infrastructure/docker/opensearch-mcp/Dockerfile`):

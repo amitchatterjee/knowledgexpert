@@ -2,10 +2,8 @@ import argparse
 import chromadb
 
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from knowledgexpert.chunker import create_chunks
 from knowledgexpert.util import embedding_mapper, setup_embedding
 from knowledgexpert.html_splitter import HTMLTextSplitter

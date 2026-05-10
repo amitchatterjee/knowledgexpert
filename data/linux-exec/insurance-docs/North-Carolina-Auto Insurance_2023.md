@@ -19,6 +19,7 @@ Insurance Commissioner Insurance is a complex issue, and it is the responsibilit
 
 In addition to the information contained in this guide,we encourage you to take the time to read your personal automobile policy.This will allow you to become familiar with the specific language of your policy.
 
+
 North Carolina Motor Vehicle Law requires that Automobile Liability coverage be continuously maintained.The minimum coverage requirements are &#36;30,000 Bodily Injury for each person, &#36;60,000total Bodily Innjury for all persons in an accident and &#36;25,000 for Property Damage. Motor Vehicle Law also requires Uninsured/Underinsured Motorists coverage. Auto insurance policies with the minimum Bodily Injury and Property Damage limits are required to include Uninsured Motorists coverage.Policies with limits greater than the minimum must provide combined Uninsured/Underinsured Motorists coverage.
 
 We are very proud of the services our department provides to the citizens of North Carolina. The North Carolina Department of Insurance makes consumer advocacy its highest priority.The Consumer Services Division will be happy to answer any questions you may have. Don't hesitate to contact this Division toll-free at 1-855-408-1212.
