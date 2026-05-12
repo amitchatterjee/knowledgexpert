@@ -231,7 +231,6 @@ class Raven:
                 weights.append(ensemble_weights[i])
             else:
                 weights.append(1.0)
-        # No FAISS retriever support: only use configured Chroma retrievers
         # If only one retriever, return it directly
         if len(retrievers) == 1:
             return retrievers[0]

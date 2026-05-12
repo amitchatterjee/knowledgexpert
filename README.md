@@ -8,7 +8,7 @@ Create a new Python virtual environment named `ai-venv` under your home director
 
 ```bash
 cd ~
-python3.13 -m venv ai-venv
+python3.14 -m venv ai-venv
 ```
 
 ### Activate the Virtual Environment

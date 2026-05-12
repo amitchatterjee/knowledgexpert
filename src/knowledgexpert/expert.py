@@ -125,7 +125,6 @@ class Expert:
         return FileChatMessageHistory(file_path=file_path)
 
     def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, embeddings_dict):
-        # FAISS/context-paths support removed — only Chroma retrievers are created
         chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
         retrievers = []
         weights = []
@@ -145,7 +144,6 @@ class Expert:
                 weights.append(ensemble_weights[i])
             else:
                 weights.append(1.0)
-        # No FAISS retriever support: only use configured Chroma retrievers
         # If only one retriever, return it directly
         if len(retrievers) == 1:
             return retrievers[0]
