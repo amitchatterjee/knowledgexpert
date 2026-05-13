@@ -26,8 +26,8 @@ export HF_TOKEN=<huggingface_token>
 export ANTHROPIC_API_KEY=<anthropic_api_key>
 export OPENAI_API_KEY=<openai_key>
 #export EMBEDDING_MODEL_DATA=msmarco-MiniLM-L6-v3
-export EMBEDDING_MODEL_DATA=BAAI/bge-m3
-export EMBEDDING_MODEL_CODE=BAAI/bge-m3
+export EMBEDDING_MODEL_DATA=bge-m3
+export EMBEDDING_MODEL_CODE=bge-m3
 
 # handle self-signed certs
 export NODE_TLS_REJECT_UNAUTHORIZED=0
@@ -73,6 +73,7 @@ Pull the latest models, etc. periodically as shown below:
 
 ```bash
 docker exec -it ollama ollama pull gemma4:latest
+docker exec -it ollama ollama pull bge-m3
 ```
 
 #### Configure parameters symlink
@@ -107,7 +108,7 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'all_collection
     "$KNOWLEDGENET_EX_HOME/autoins/rules;;class:code,subclass:application,category:rules" \
     "$KNOWLEDGENET_EX_HOME/autoins/src/autoins;;class:code,subclass:application,category:application" \
     "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
+    --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" \
     --clear --store --chunkSize 4800 --chunkOverlap 720
 
 # Wolfpack vector stores
@@ -123,18 +124,18 @@ python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'rules_collecti
 
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'app_docs_collection'  --documents \
     "$KNOWLEDGENET_EX_HOME/autoins/doc;;class:documentation,subclass:application,category:application" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --clear --store \
+    --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --clear --store \
     --chunkSize 4800 --chunkOverlap 720
 
 python $KNOWLEDGEXPERT_HOME/src/vector_store.py --collectionName 'framework_docs_collection' --documents \
     "$KNOWLEDGENET_HOME/doc;;class:documentation,subclass:platform" \
-    --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" \
+    --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" \
     --clear --store --chunkSize 4800 --chunkOverlap 720
 ```
 
 #### Query the vector database
 ```bash
-python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --collectionName 'all_collection'
+python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --collectionName 'all_collection'
 
 python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "https://api.openai.com/v1/embeddings" --embeddingModel "$EMBEDDING_MODEL_CODE" --embeddingProvider 'openai' --collectionName 'rules_collection'
 
@@ -185,20 +186,20 @@ curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
 # Execute Raven using command line arguments:
 ###############################################
 # Use openai/gpt5 model. Utilize Opensearch MCP client
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer' --input "What is the MSRP value for Toyota Prius 2025 base model?"
 
 # Use openai/gpt5 model. Utilize agenticRag
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is a ruleset?"
 
 # Use openai/gpt5 model. Utilize linux-exec MCP client
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is the minimum liability insurance required by the state of North Carolina for a driver's license?"
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --llmApiEndpoint "https://api.openai.com/v1/" --llmModel "gpt-5.4" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --outputType 'knowledgexpert.raven.Answer'  --input "What is the minimum liability insurance required by the state of North Carolina for a driver's license?"
 
 
 # Use anthropic claude as the llm with MCP
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "https://api.anthropic.com" --llmModel 'anthropic:claude-sonnet-4-20250514' --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure
 
 # Use gemma as general llm running on ollama. There is no cost to use it but it is slooooow.
-python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history --skipMcpTools --embeddingApiUrl "http://localhost:9000" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma4:latest" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --outputType 'knowledgexpert.raven.Answer'
+python $KNOWLEDGEXPERT_HOME/src/raven_cli.py --checkpointerDir $HOME/.knowledgexpert/history  --embeddingProvider ollama --embeddingApiUrl "http://localhost:11434" --embeddingModel "$EMBEDDING_MODEL_DATA" --llmApiEndpoint "http://localhost:11434" --llmModel "ollama:gemma4:latest" --mcpConfig $KNOWLEDGEXPERT_HOME/infrastructure/conf/raven/mcp.json --mcpInsecure --reactLoopMax 100
 
 ################################################
 # Load command line params from a config file:

@@ -76,7 +76,7 @@ def parse_args(args_list=None):
 
     parser.add_argument("--embeddingApiUrl", default=None, help="Default URL for the embedding server (optional)")
     parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L6-v3', help="Default embedding model (default: msmarco-MiniLM-L6-v3)")
-    parser.add_argument("--embeddingProvider", default='huggingface', choices=['openai', 'huggingface'], help="Default embedding provider (default: huggingface)")
+    parser.add_argument("--embeddingProvider", default='huggingface', choices=['openai', 'huggingface', 'ollama'], help="Default embedding provider (default: huggingface)")
     parser.add_argument("--embeddings", nargs='+', default=[None], help='Embeddings used for this application. Accepts one or more values. Each value is of the format: <embedding_id>:[embedding_url][|][embedding_model][|][k][|][score_threshold][|][embedding_id]')
 
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")

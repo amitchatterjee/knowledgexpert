@@ -237,8 +237,12 @@ class Raven:
         # Otherwise, return an ensemble retriever
         return EnsembleRetriever(retrievers=retrievers, weights=weights)
 
-    def invoke(self, input: dict, context: dict = {}, config:dict = {}):
+    def invoke(self, input: dict, context: dict | None = None, config: dict | None = None):
+        context = context or {}
+        run_config = dict(config or {})
         context["raven_ctx"] = self
-        response = self.agent.invoke(input, context=context, config=config)
+        if getattr(self.args, "reactLoopMax", None):
+            run_config["recursion_limit"] = self.args.reactLoopMax
+        response = self.agent.invoke(input, context=context, config=run_config)
         self.logger.debug("Response from agent:\n%s", response)
         return response['structured_response'] if 'structured_response' in response else response

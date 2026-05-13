@@ -1,7 +1,7 @@
 {
     "promptDir": "${HOME}/.knowledgexpert/conf/wolfpack-legacy/developer",
 
-    "llmModel": "gpt-4.1-mini",
+    "llmModel": "gpt-5.4",
     "llmApiEndpoint": "https://api.openai.com/v1",
 
     "embeddings": [
@@ -13,9 +13,9 @@
         },
         {
             "embeddingId": "doc",
-            "embeddingApiUrl": "http://localhost:9000",
+            "embeddingApiUrl": "http://localhost:11434",
             "embeddingModel": "${EMBEDDING_MODEL_DATA}",
-            "embeddingProvider": "huggingface"
+            "embeddingProvider": "ollama"
         }
     ],
 

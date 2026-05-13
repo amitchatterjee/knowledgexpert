@@ -15,9 +15,9 @@
         },
         {
             "embeddingId": "doc",
-            "embeddingApiUrl": "http://localhost:9000",
+            "embeddingApiUrl": "http://localhost:11434",
             "embeddingModel": "${EMBEDDING_MODEL_DATA}",
-            "embeddingProvider": "huggingface"
+            "embeddingProvider": "ollama"
         }
     ],
 

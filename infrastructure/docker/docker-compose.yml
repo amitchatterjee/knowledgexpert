@@ -31,6 +31,7 @@ services:
     restart: unless-stopped
 
   huggingface-embeddings-data:
+    profiles: ["hf-embeddings"]
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     container_name: huggingface-embeddings-data
     ports:

@@ -34,7 +34,7 @@ def parse_args(args_list=None):
     # Vector-related stuff
     parser.add_argument("--embeddingApiUrl", default=None, help="Default URL for the embedding server (optional)")
     parser.add_argument("--embeddingModel", default='msmarco-MiniLM-L6-v3', help="Default embedding model (default: msmarco-MiniLM-L6-v3)")
-    parser.add_argument("--embeddingProvider", default='huggingface', choices=['openai', 'huggingface'], help="Default embedding provider (default: huggingface)")
+    parser.add_argument("--embeddingProvider", default='ollama', choices=['openai', 'huggingface', 'ollama'], help="Default embedding provider (default: ollama)")
     parser.add_argument("--embeddings", nargs='+', default=[None], help='Embeddings used for this application. Accepts one or more values. Each value is of the format: <embedding_id>:[embedding_url][|][embedding_model][|][k][|][score_threshold][|][embedding_id]')
     parser.add_argument("--chromaHost", default='localhost', help="ChromaDB host (default: localhost)")
     parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port (default: 8000)")
@@ -47,6 +47,7 @@ def parse_args(args_list=None):
     parser.add_argument("--vectorToolName", default="AutoDoc", help="If agentic RAG option is selected, the name of the vector tool")
     parser.add_argument("--vectorToolDescription", default="Search and return information from the company vector db", help="If agentic RAG option is selected, the description for the vector tool")
     parser.add_argument("--persona", default="Raven", help="Persona name to use as input parameter (default: Raven)")
+    parser.add_argument("--reactLoopMax", type=int, default=25, help="Max ReAct tool-call loops (LangGraph recursion_limit). Default: 25")
 
     # MCP-related stuff
     parser.add_argument("--mcpConfig", help="Path to MCP config JSON")
@@ -133,7 +134,9 @@ def serve_cli(raven, logger, persona, is_checkpointer, input, extra_context=None
                 continue
             console.print('The assistant is collecting information and processing them to come up with an answer...')
 
-        config = {"configurable": {"thread_id": session}} if is_checkpointer else None
+        config = {"configurable": {"thread_id": session}} if is_checkpointer else {}
+        if getattr(raven.args, "reactLoopMax", None):
+            config["recursion_limit"] = raven.args.reactLoopMax
         request = {"messages": [{"role": "user", "content": user_query}],
                    "user_id": user_id, "persona": persona}
         context = {'document': extra_context} if extra_context else {}
