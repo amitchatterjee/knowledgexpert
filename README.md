@@ -22,10 +22,8 @@ echo 'source ~/ai-venv/bin/activate' >> ~/.bashrc
 # Change as needed
 export KNOWLEDGEXPERT_HOME=$GIT_HOME/git/knowledgexpert
 export KNOWLEDGEXPERT_VSCODE_HOME=$GIT_HOME/git/knowledgexpert-vscode
-export HF_TOKEN=<huggingface_token>
 export ANTHROPIC_API_KEY=<anthropic_api_key>
 export OPENAI_API_KEY=<openai_key>
-#export EMBEDDING_MODEL_DATA=msmarco-MiniLM-L6-v3
 export EMBEDDING_MODEL_DATA=bge-m3
 export EMBEDDING_MODEL_CODE=bge-m3
 
@@ -230,7 +228,7 @@ EOF
 python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py
 
 # Start with an initial request read from a file
-python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/wolfpack/prompt-1.txt
+python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HOME/benchmark/raven/prompt-1.txt
 
 ```
 

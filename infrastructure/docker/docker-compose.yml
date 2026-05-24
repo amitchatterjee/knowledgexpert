@@ -30,20 +30,6 @@ services:
       - neo4j_data:/data
     restart: unless-stopped
 
-  huggingface-embeddings-data:
-    profiles: ["hf-embeddings"]
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
-    container_name: huggingface-embeddings-data
-    ports:
-      - "9000:80"
-    environment:
-      - HF_TOKEN=${HF_TOKEN}
-      - DEVICE=cpu
-      - MODEL_ID=${EMBEDDING_MODEL_DATA:-sentence-transformers/msmarco-MiniLM-L6-v3}
-    volumes:
-      - huggingface_data:/data
-    restart: unless-stopped
-
   opensearch:
     image: opensearch-with-mcp:latest
     build:
@@ -105,9 +91,6 @@ volumes:
   neo4j_data:
     driver: local
     name: neo4j_data
-  huggingface_data:
-    driver: local
-    name: huggingface_data
   opensearch-data:
     driver: local
     name: opensearch-data

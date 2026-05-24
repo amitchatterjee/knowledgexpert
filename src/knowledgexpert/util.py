@@ -3,7 +3,6 @@ import os
 
 import string
 from langchain.chat_models.base import init_chat_model
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
 
@@ -93,17 +92,9 @@ def embedding_mapper(embedding, def_embedding_provider, def_embedding_api_url, d
     return to_dict
 
 def setup_embedding(embedding):
-    if embedding['embeddingProvider'] == "openai":
+    provider = embedding.get('embeddingProvider')
+    if provider == "openai":
         return OpenAIEmbeddings(model=embedding['embeddingModel'])
-    elif embedding['embeddingProvider'] == "huggingface":
-        return HuggingFaceInferenceAPIEmbeddings(
-            api_url=embedding['embeddingApiUrl'],
-            model_name=embedding['embeddingModel'],
-            api_key="")
-    
-    elif 'embeddingApiUrl' in embedding and embedding['embeddingApiUrl']:
-        return OllamaEmbeddings(
-            model=embedding['embeddingModel'],
-            base_url=embedding.get('embeddingApiUrl'))
-    else:
-        raise ValueError(f"embeddingApiUrl is required for huggingface provider (embeddingId: {embedding.get('embeddingId', 'unknown')})")
+    return OllamaEmbeddings(
+        model=embedding['embeddingModel'],
+        base_url=embedding.get('embeddingApiUrl'))
