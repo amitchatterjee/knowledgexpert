@@ -4,14 +4,18 @@
 			"url": "http://localhost:9901/mcp",
 			"type": "http"
 		},
-		"AutoGeek": {
-			"type": "sse",
-			"url": "https://localhost:9200/_plugins/_ml/mcp",
-			"headers": {
-				"Authorization": "Basic YWRtaW46b3BlblNlYXJjaCQyMDI1"
+		"Autogeek": {
+			"command": "uvx",
+			"args": [
+				"opensearch-mcp-server-py"
+			],
+			"env": {
+				"OPENSEARCH_URL": "https://localhost:9200",
+				"OPENSEARCH_USERNAME": "alice",
+				"OPENSEARCH_PASSWORD": "N7!qL2#vP9@tR4$k",
+				"OPENSEARCH_SSL_VERIFY": "false"
 			}
 		}
 	},
-	"inputs": [
-	]
+	"inputs": []
 }

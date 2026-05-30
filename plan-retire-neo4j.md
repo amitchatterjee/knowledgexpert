@@ -59,6 +59,17 @@ Retire ChromaDB support in knowledgexpert and migrate vector ingestion/retrieval
    - Save representative prompt set and expected outputs.
    - Record latency and retrieval quality for top-k results.
 
+### Phase 0 findings from the current repo baseline
+- Vector ingest and retrieval are still hard-wired to Chroma in the runtime path: `src/vector_store.py`, `src/vector_query.py`, `src/knowledgexpert/raven.py`, and `src/knowledgexpert/expert.py` all instantiate `chromadb.HttpClient` and `langchain_chroma.Chroma` directly.
+- The public CLI/config contract is still Chroma-shaped. Current shipped configs use `chromaHost` and `chromaPort`, and there are no provider-agnostic vector keys yet.
+- The OpenSearch target should be treated as password-protected by default, so the migration needs explicit credential handling and an authenticated smoke test rather than assuming anonymous access.
+- Chroma is still present in runtime dependencies and local infra: `chromadb` and `langchain-chroma` remain in `requirements.txt`, and `infrastructure/docker/docker-compose.yml` still defines a Chroma service and data volume.
+- OpenSearch support already exists elsewhere in the repo for MCP/infrastructure/docs, but the vector DB migration path has not been wired to OpenSearch yet.
+- Baseline benchmark material exists as prompt fixtures under `benchmark/`, but there are no committed expected-output snapshots or latency/retrieval measurements yet.
+
+Implication:
+- Phase 0 is still documentation and baseline capture work only; no code changes are required for this phase unless we decide to add explicit benchmark artifacts.
+
 Exit criteria:
 - Schema and naming conventions documented.
 - Baseline benchmark set committed for comparison.
@@ -73,7 +84,7 @@ Exit criteria:
    - `src/vector_store.py`
    - `src/vector_query.py`
 3. Add generic CLI/config keys:
-   - `vectorDbProvider`, `vectorDbHost`, `vectorDbPort`, `vectorDbUseSsl`, `vectorDbIndexPrefix`.
+   - `vectorDbProvider`, `vectorDbHost`, `vectorDbPort`, `vectorDbUseSsl`, `vectorDbUsername`, `vectorDbPassword`, `vectorDbIndexPrefix`.
 4. Keep backward compatibility:
    - Continue accepting `chromaHost`/`chromaPort` as deprecated aliases.
    - Emit deprecation warnings at startup.
@@ -181,6 +192,7 @@ Exit criteria:
 ## Operational Readiness Checklist
 - OpenSearch index template and mappings versioned.
 - TLS/auth configuration documented and tested.
+- Password-protected OpenSearch credentials are sourced from config or environment and validated with a secure connection smoke test.
 - Health checks for vector retrieval path added.
 - Logging includes provider, index, and retrieval mode.
 - Alerting thresholds for OpenSearch errors/timeouts set.

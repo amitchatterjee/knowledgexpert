@@ -1,3 +1,5 @@
+# This compose file is intended for a fully trusted developer environment.
+# For production, the same services must be ported to a secure deployment model with proper secret handling, access controls, and automation.
 services:
   ollama:
     image: ollama/ollama:latest
@@ -35,6 +37,8 @@ services:
     build:
       context: ./opensearch-mcp
       dockerfile: Dockerfile
+      args:
+        OPENSEARCH_VERSION: ${OPENSEARCH_VERSION:-latest}
     container_name: opensearch
     environment:
       - discovery.type=single-node

@@ -23,7 +23,7 @@
     {
       "name": "SearchIndexTool",
       "type": "SearchIndexTool",
-      "description": "Use this tool to search an index by providing two parameters: 'index' for the index name, and 'query' for the OpenSearch DSL formatted query. Only use this tool when both index name and DSL query is available.",
+      "description": "Use this tool to search an index by providing two parameters: 'index' for the index name, and 'query' for the OpenSearch DSL formatted query. Only use this tool when both index name and DSL query is available. Available indices: 'msrp' (vehicle MSRP pricing data, fields: make, model, year, trim, msrp, currency, market).",
       "attributes": {
         "input_schema": {
           "type": "object",

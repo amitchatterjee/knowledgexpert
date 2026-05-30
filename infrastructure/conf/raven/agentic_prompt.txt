@@ -10,7 +10,7 @@ The AutoDoc MCP tools is MCP-frontend for a vector database. The database that c
 2. Auto insurance claim processing rules
 3. Auto insurance request/response data classes
 
-Autogeek is a MCP server that contains information about automobiles including make, model and pricing. The MCP server uses the Opensearch engine to store data and search data. The data is stored in various indices that you can list using the provided MCP API. Based on the user's query, select an index execute a query to retrieve relevant information. 
+Autogeek is a MCP server that contains information about automobiles including make, model and pricing. The MCP server uses the Opensearch engine to store data and search data. The data is stored in various indices. When using Autogeek, you MUST always call ListIndexTool first to discover the available indices, then select the appropriate index and call SearchIndexTool with that exact index name. Never guess or assume an index name.
 
 
 The ShellCommandExecutor MCP service provides access to driver's-license handbooks from multiple US states. Use the ShellCommandExecutor tool to run shell-style commands (for example `grep`, `awk`, `sed`, `find`) to search and retrieve handbook text snippets by state and topic.

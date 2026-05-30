@@ -1,9 +1,11 @@
 # Knowledgexpert README
 A companion project for Knowledgenet that helps developers build rules-based application using AI
 
-## Development Environment Setup (One-time)
+The examples in this README assume a fully trusted developer environment. For a production environment, the same concepts need to be ported into a secure deployment model, with proper secret handling, access controls, and automation.
 
-### Creating a Virtual Environment
+## Initial setup
+
+### Create a virtual environment
 Create a new Python virtual environment named `ai-venv` under your home directory:
 
 ```bash
@@ -11,7 +13,7 @@ cd ~
 python3.14 -m venv ai-venv
 ```
 
-### Activate the Virtual Environment
+#### Activate the Virtual Environment
 Add the following line to your `~/.bashrc` file:
 ```bash
 echo 'source ~/ai-venv/bin/activate' >> ~/.bashrc
@@ -35,11 +37,23 @@ source ~/.bashrc
 ```
 
 ### Install pre-requisite software
+
+Install uv if it is not already available. This is a workaround for the self-signed certificate issue with OpenSearch MCP when connected using VS Code's MCP client.
+
+```bash
+sudo dnf install uv
+```
+
+Install required python packages
+
 ```bash
 pip install --upgrade pip
 pip install -r $KNOWLEDGEXPERT_HOME/requirements.txt
+```
 
-# Required for looking into checkpointer
+Install sqlite for looking into checkpointer (conversational memory)
+
+```bash
 sudo dnf install sqlite
 ```
 
@@ -66,20 +80,12 @@ The Linux Exec MCP service exposes a FastMCP tool named `ShellCommandExecutor` t
 docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml build linux-exec-mcp
 ```
 
-#### Setup the models, etc.
-Pull the latest models, etc. periodically as shown below:
-
-```bash
-docker exec -it ollama ollama pull gemma4:latest
-docker exec -it ollama ollama pull bge-m3
-```
-
-#### Configure parameters symlink
+### Configure parameters symlink
 ```bash
 ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```
 
-## Bring infrastructure components up and initialize Knowledge stores
+## Infrastructure operations
 
 ### Bring up the infrastructure services
 
@@ -88,10 +94,114 @@ ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
 ```
 
-### Build the vector/graph knowledge stores
+#### Setup the models, etc.
+Pull the latest models, etc. periodically as shown below:
 
 ```bash
+docker exec -it ollama ollama pull gemma4:latest
+docker exec -it ollama ollama pull bge-m3
+```
 
+### Add OpenSearch users and index permissions
+
+Use the ndjson fixtures under `$KNOWLEDGEXPERT_HOME/infrastructure/admin/opensearch` to create users and bind them to index-scoped roles.
+
+```bash
+# Create or update roles
+while IFS= read -r payload || [ -n "$payload" ]; do
+  role_name=$(printf '%s' "$payload" | jq -r '.name')
+  role_body=$(printf '%s' "$payload" | jq 'del(.name)')
+  curl -k -u 'admin:openSearch$2025' \
+    -H 'Content-Type: application/json' \
+    -X PUT "https://localhost:9200/_plugins/_security/api/roles/$role_name" \
+    --data-binary "$role_body"
+done < "$KNOWLEDGEXPERT_HOME/infrastructure/admin/opensearch/roles.ndjson"
+
+# Create or update internal users
+while IFS= read -r payload || [ -n "$payload" ]; do
+  user_name=$(printf '%s' "$payload" | jq -r '.name')
+  user_body=$(printf '%s' "$payload" | jq 'del(.name)')
+  curl -k -u 'admin:openSearch$2025' \
+    -H 'Content-Type: application/json' \
+    -X PUT "https://localhost:9200/_plugins/_security/api/internalusers/$user_name" \
+    --data-binary "$user_body"
+done < "$KNOWLEDGEXPERT_HOME/infrastructure/admin/opensearch/users.ndjson"
+
+# Map users to roles
+while IFS= read -r payload || [ -n "$payload" ]; do
+  role_name=$(printf '%s' "$payload" | jq -r '.name')
+  mapping_body=$(printf '%s' "$payload" | jq 'del(.name)')
+  curl -k -u 'admin:openSearch$2025' \
+    -H 'Content-Type: application/json' \
+    -X PUT "https://localhost:9200/_plugins/_security/api/rolesmapping/$role_name" \
+    --data-binary "$mapping_body"
+done < "$KNOWLEDGEXPERT_HOME/infrastructure/admin/opensearch/rolesmapping.ndjson"
+```
+
+The example fixtures create two users:
+- `alice` can read indices matching `msrp-*`
+- `bob` can read and write indices matching `msrp-*`
+
+
+### Setup Opensearch MCP
+
+```bash
+# get available plugins
+curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSearch$2025'
+
+# get cluster settings
+curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025' --insecure
+
+# create agents
+curl --insecure \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/conf/mcp/opensearch/agent.ndjson" \
+  "https://localhost:9200/_plugins/_ml/agents/_register" \
+  -u 'admin:openSearch$2025'
+
+# register tools
+curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
+  --insecure \
+  -u 'admin:openSearch$2025' \
+  -H 'Content-Type: application/json' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/conf/mcp/opensearch/mcp-tools.json"
+
+# verify Alice can read the current msrp index
+curl -sS \
+  -u 'alice:N7!qL2#vP9@tR4$k' \
+  "https://localhost:9200/msrp/_search?size=1"
+
+```
+
+The AutoGeek MCP server uses an `Authorization` header in [infrastructure/conf/raven/mcp.json](infrastructure/conf/raven/mcp.json); that header is configured with Alice's credentials for the MCP endpoint. Alice's credentials are also used for the VS Code's MCP client configuration - [.vscode/mcp.json](.vscode/mcp.json)
+
+## Initialize Knowledge content
+
+### Build Opensearch MCP content
+
+```bash
+# Clear existing msrp index data. Only execute this when you want to clear the data, the commands below this one will upsert the content if the content already exists
+curl -k -u 'admin:openSearch$2025' -X DELETE "https://localhost:9200/msrp?ignore_unavailable=true"
+
+# Load msrp index
+curl -sS -H "Content-Type: application/x-ndjson" \
+  -u 'bob:X5@mD8!zH3#uC1%w' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/data/opensearch/msrp/toyota-2025-msrp-bulk.ndjson" \
+  --insecure \
+  "https://localhost:9200/_bulk"
+
+curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
+  -H "Content-Type: application/json" \
+  -u 'admin:openSearch$2025' \
+  --data-binary @"$KNOWLEDGEXPERT_HOME/data/opensearch/msrp/msrp-mappings.json"
+
+```
+
+Use the admin account here because index mapping updates are a security-sensitive operation. Use `bob` only for the bulk ingest step.
+
+### Build vector/graph data
+
+```bash
 # Graph store
 python $KNOWLEDGEXPERT_HOME/src/graph_store.py --srcDirs \
     "$KNOWLEDGENET_HOME/src:knowledgenet" \
@@ -139,43 +249,6 @@ python $KNOWLEDGEXPERT_HOME/src/vector_query.py --embeddingApiUrl "https://api.o
 
 ```
 
-### Setup opensearch MCP knowledge stores
-
-```bash
-# get available plugins
-curl -X GET 'https://localhost:9200/_cat/plugins?v' --insecure -u 'admin:openSearch$2025'
-
-# get cluster settings
-curl -X GET "https://localhost:9200/_cluster/settings" -u 'admin:openSearch$2025' --insecure
-
-# create agents
-curl --insecure \
-  -H "Content-Type: application/x-ndjson" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/conf/mcp/opensearch/agent.ndjson" \
-  "https://localhost:9200/_plugins/_ml/agents/_register" \
-  -u 'admin:openSearch$2025'
-
-# register tools
-curl -X POST 'https://localhost:9200/_plugins/_ml/mcp/tools/_register' \
-  --insecure \
-  -u 'admin:openSearch$2025' \
-  -H 'Content-Type: application/json' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/infrastructure/conf/mcp/opensearch/mcp-tools.json"
-
-# Load msrp data
-curl -sS -H "Content-Type: application/x-ndjson" \
-  -u 'admin:openSearch$2025' \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/data/opensearch/msrp/toyota-2025-msrp-bulk.ndjson" \
-  --insecure \
-  "https://localhost:9200/_bulk"
-
-
-curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Basic YWRtaW46b3BlblNlYXJjaCQyMDI1" \
-  --data-binary @"$KNOWLEDGEXPERT_HOME/data/opensearch/msrp/msrp-mappings.json"
-
-```
 
 ## Execute Raven CLI
 
