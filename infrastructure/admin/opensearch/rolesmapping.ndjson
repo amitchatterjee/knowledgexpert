@@ -1,2 +1,4 @@
 {"name":"msrp_reader","users":["alice"],"backend_roles":[],"hosts":[]}
 {"name":"msrp_writer","users":["bob"],"backend_roles":[],"hosts":[]}
+{"name":"vector_reader","users":["alice"],"backend_roles":[],"hosts":[]}
+{"name":"vector_writer","users":["bob"],"backend_roles":[],"hosts":[]}

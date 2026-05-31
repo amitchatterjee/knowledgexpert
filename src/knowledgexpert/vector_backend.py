@@ -84,6 +84,7 @@ def create_vector_store(
             "verify_certs": False,
             "ssl_assert_hostname": False,
             "ssl_show_warn": False,
+            "engine": "faiss",
         }
         http_auth = config.http_auth()
         if http_auth:

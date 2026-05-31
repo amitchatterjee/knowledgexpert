@@ -68,6 +68,22 @@ Exit state:
 3. Validate operational behavior:
    - Auth/TLS, retries, timeout handling, and error observability.
 
+Progress update (as of 2026-05-31):
+1. OpenSearch runtime hardening completed for current flows:
+   - OpenSearch provider path is active for ingest/query in the shared vector backend.
+   - OpenSearch 3.x compatibility issue addressed by using a supported vector engine for new index creation.
+2. Access-control hardening completed for dual-provider operations:
+   - Added vector-specific OpenSearch roles and mappings for write/read paths.
+   - `bob` permissions now cover clear/create/ingest/refresh lifecycle for vector indices.
+   - `alice` permissions now cover vector retrieval/search for query flows.
+3. Operator workflow/docs progress completed:
+   - Added shared env setup script (`sh/setup_env.sh`) for provider selection (`chroma` or `opensearch`).
+   - Updated README vector build/query and Raven CLI sections to use provider-driven arguments from the setup script.
+4. Current validation status:
+   - Vector store and vector query were exercised on both ChromaDB and OpenSearch.
+   - Early parity checks are positive.
+   - Phase 3 remains in progress until parity harness/reporting and formal acceptance thresholds are completed.
+
 Suggested parity targets:
 - Top-5 retrieval overlap >= 0.70 on regression set.
 - No critical quality regressions on accepted prompts.
