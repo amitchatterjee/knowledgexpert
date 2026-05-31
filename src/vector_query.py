@@ -1,13 +1,17 @@
 import argparse
-import chromadb
-from langchain_chroma import Chroma
 from knowledgexpert.util import embedding_mapper, setup_embedding
+from knowledgexpert.vector_backend import VectorDbConfig, create_vector_store
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Query REPL")
-    parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
-    parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
-    parser.add_argument("--collectionName", type=str, default="all_collection", help="ChromaDB collection name")
+    parser.add_argument("--vectorDbProvider", default='chroma', choices=['chroma', 'opensearch'], help="Vector DB provider (default: chroma)")
+    parser.add_argument("--vectorDbHost", type=str, default="localhost", help="Vector DB host")
+    parser.add_argument("--vectorDbPort", type=int, default=8000, help="Vector DB port")
+    parser.add_argument("--vectorDbUseSsl", action="store_true", help="Use TLS when connecting to the vector DB")
+    parser.add_argument("--vectorDbUsername", default=None, help="Optional vector DB username")
+    parser.add_argument("--vectorDbPassword", default=None, help="Optional vector DB password")
+    parser.add_argument("--vectorDbIndexPrefix", default=None, help="Optional index/collection prefix")
+    parser.add_argument("--collectionName", type=str, default="all_collection", help="Logical vector collection/index name")
     parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L6-v3", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Embedding provider API endpoint URL (optional)")
     parser.add_argument("--k", type=int, default=100, help="Number of nearest neighbors to retrieve")
@@ -17,14 +21,13 @@ def parse_args():
     return parser.parse_args()
 
 def init_vector_store(args):
-    chroma_client = chromadb.HttpClient(host=args.chromaHost, port=args.chromaPort)
-
+    vector_db_config = VectorDbConfig.from_mapping(vars(args))
     embedding_function = setup_embedding(embedding_mapper(None, args.embeddingProvider, args.embeddingApiUrl, args.embeddingModel))
-    
-    vector_store = Chroma(
-        client=chroma_client,
+
+    vector_store = create_vector_store(
+        config=vector_db_config,
         collection_name=args.collectionName,
-        embedding_function=embedding_function
+        embedding_function=embedding_function,
     )
     return vector_store
 
@@ -58,7 +61,11 @@ def run_repl(vector_store):
 
 if __name__ == "__main__":
     args = parse_args()
-    print(f"Initializing Knowledge Query with ChromaDB at {args.chromaHost}:{args.chromaPort}, using collection '{args.collectionName}' and embedding model '{args.embeddingModel}'")
+    print(
+        "Initializing Knowledge Query with "
+        f"{args.vectorDbProvider} at {args.vectorDbHost}:{args.vectorDbPort}, "
+        f"using collection '{args.collectionName}' and embedding model '{args.embeddingModel}'"
+    )
     vector_store = init_vector_store(args)
     run_repl(vector_store)
 

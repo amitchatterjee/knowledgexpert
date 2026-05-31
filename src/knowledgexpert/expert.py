@@ -9,10 +9,8 @@ import logging
 from logging import Logger
 import os
 from typing import Any
-import chromadb
 import os
 
-from langchain_chroma import Chroma
 from langchain.chat_models.base import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -24,7 +22,6 @@ from langchain_classic.agents import AgentExecutor
 from langchain.agents import create_agent
 from langchain_classic.tools import Tool
 
-from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.graphs import Neo4jGraph
 from langchain_classic.chains import GraphCypherQAChain
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
@@ -35,6 +32,7 @@ import asyncio
 
 from knowledgexpert.util import setup_embedding
 from knowledgexpert.util import setup_llm
+from knowledgexpert.vector_backend import VectorDbConfig, create_retriever
 
 hist_dir = os.path.join(os.path.expanduser("~"), ".knowledgexpert", "history")
 os.makedirs(hist_dir, exist_ok=True)
@@ -75,7 +73,15 @@ class Expert:
         if self.args.mcpConfig:
             tools = asyncio.run(self._setup_mcp_tools(self.args.mcpConfig, insecure=self.args.mcpInsecure))
 
-        self.rag_chain = self._setup_vector_chain(self.args.skipVectorSearch, self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.llmModel, self.args.llmApiEndpoint, self.args.format, tools)
+        self.rag_chain = self._setup_vector_chain(
+            self.args.skipVectorSearch,
+            self.args.baseCollections,
+            self.args.ensembleWeights,
+            self.args.llmModel,
+            self.args.llmApiEndpoint,
+            self.args.format,
+            tools,
+        )
 
         if getattr(self.args, "disableHistory", False):
             self.chat = self.rag_chain
@@ -124,31 +130,14 @@ class Expert:
         file_path = os.path.join(hist_dir, f"history_{session_id}.json")
         return FileChatMessageHistory(file_path=file_path)
 
-    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, embeddings_dict):
-        chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
-        retrievers = []
-        weights = []
-        for i, collection_element in enumerate(base_collections):
-            vectorDb_kwargs = {"search_kwargs": {}}
-            if 'k' in collection_element and collection_element['k']:
-                vectorDb_kwargs["search_kwargs"]["k"] = collection_element['k']
-            if 'searchAlgorithm' in collection_element and collection_element['searchAlgorithm'] == "similarity_score_threshold" and 'scoreThreshold' in collection_element and collection_element['scoreThreshold']:
-                vectorDb_kwargs["search_kwargs"]["score_threshold"] = collection_element['scoreThreshold']
-                
-            vectorDb = Chroma(
-                client=chroma_client, collection_name=collection_element['collectionName'], 
-                embedding_function=embeddings_dict[collection_element['embeddingId']])
-            retrievers.append(vectorDb.as_retriever(search_type=collection_element['searchAlgorithm'], **vectorDb_kwargs))
-            # Use ensemble_weights[i] if available, else default to 1.0
-            if ensemble_weights and i < len(ensemble_weights):
-                weights.append(ensemble_weights[i])
-            else:
-                weights.append(1.0)
-        # If only one retriever, return it directly
-        if len(retrievers) == 1:
-            return retrievers[0]
-        # Otherwise, return an ensemble retriever
-        return EnsembleRetriever(retrievers=retrievers, weights=weights)
+    def _setup_vector_stores(self, base_collections, ensemble_weights, embeddings_dict):
+        vector_db_config = VectorDbConfig.from_mapping(vars(self.args))
+        return create_retriever(
+            config=vector_db_config,
+            base_collections=base_collections,
+            ensemble_weights=ensemble_weights,
+            embeddings_dict=embeddings_dict,
+        )
 
     def _setup_graph_chain(self, useGraphRag, neo4jUri, neo4jUser, neo4jPassword, neo4jDatabase, graphLlmModel, graphLlmApiEndpoint, verbose):
         if not useGraphRag:
@@ -163,10 +152,8 @@ class Expert:
         graph_llm = init_chat_model(graphLlmModel, base_url=graphLlmApiEndpoint)
         return GraphCypherQAChain.from_llm(graph_llm, graph=graph, verbose=verbose, allow_dangerous_requests=True, prompt=chat_prompt)
 
-    def _setup_vector_chain(self, skip_vector_search, chroma_host, chroma_port, base_collections, ensemble_weights, llm_model, llm_api_endpoint, format, tools):
+    def _setup_vector_chain(self, skip_vector_search, base_collections, ensemble_weights, llm_model, llm_api_endpoint, format, tools):
         base_retriever = None if skip_vector_search else self._setup_vector_stores(
-            chroma_host=chroma_host,
-            chroma_port=chroma_port,
             base_collections=base_collections,
             ensemble_weights=ensemble_weights,
             embeddings_dict=self.embeddings_dict

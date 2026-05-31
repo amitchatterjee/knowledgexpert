@@ -1,12 +1,10 @@
 import argparse
-import chromadb
-
-from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
 from knowledgexpert.chunker import create_chunks
 from knowledgexpert.util import embedding_mapper, setup_embedding
 from knowledgexpert.html_splitter import HTMLTextSplitter
+from knowledgexpert.vector_backend import VectorDbConfig, create_vector_client, create_vector_store
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
@@ -14,9 +12,14 @@ def parse_args():
     parser.add_argument("--chunkSize", type=int, default=2000, help="Chunk size for splitters (tokens)")
     parser.add_argument("--chunkOverlap", type=int, default=200, help="Chunk overlap for splitters (tokens)")
     parser.add_argument("--log", type=str, default="INFO", help="Log severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
-    parser.add_argument("--collectionName", type=str, default="all_collection", help="ChromaDB collection name")
-    parser.add_argument("--chromaHost", type=str, default="localhost", help="ChromaDB host")
-    parser.add_argument("--chromaPort", type=int, default=8000, help="ChromaDB port")
+    parser.add_argument("--collectionName", type=str, default="all_collection", help="Logical vector collection/index name")
+    parser.add_argument("--vectorDbProvider", default='chroma', choices=['chroma', 'opensearch'], help="Vector DB provider (default: chroma)")
+    parser.add_argument("--vectorDbHost", type=str, default="localhost", help="Vector DB host")
+    parser.add_argument("--vectorDbPort", type=int, default=8000, help="Vector DB port")
+    parser.add_argument("--vectorDbUseSsl", action="store_true", help="Use TLS when connecting to the vector DB")
+    parser.add_argument("--vectorDbUsername", default=None, help="Optional vector DB username")
+    parser.add_argument("--vectorDbPassword", default=None, help="Optional vector DB password")
+    parser.add_argument("--vectorDbIndexPrefix", default=None, help="Optional index/collection prefix")
     parser.add_argument("--embeddingModel", type=str, default="msmarco-MiniLM-L6-v3", help="Embedding model name")
     parser.add_argument("--embeddingApiUrl", type=str, default=None, help="Embedding provider API endpoint URL (optional)")
     parser.add_argument("--embeddingProvider", default='ollama', choices=['openai', 'ollama'], help="Embedding provider (default: ollama)")
@@ -68,18 +71,21 @@ def main(args):
             print_chunk_info(chunks)
         doc_chunks.extend(chunks)
     if args.store:
-        chroma_client = chromadb.HttpClient(host=args.chromaHost, port=args.chromaPort)
+        vector_db_config = VectorDbConfig.from_mapping(vars(args))
+        vector_client = create_vector_client(vector_db_config)
         if args.clear:
             logger.info("Purging old values from store...")
-            if args.collectionName in [col.name for col in chroma_client.list_collections()]:
-                chroma_client.delete_collection(args.collectionName)
+            collection_name = vector_db_config.with_collection_name(args.collectionName)
+            if collection_name in [col.name for col in vector_client.list_collections()]:
+                vector_client.delete_collection(collection_name)
         
         embedding_function = setup_embedding(embedding_mapper(None, args.embeddingProvider, args.embeddingApiUrl, args.embeddingModel))
         
-        vector_store = Chroma(
-            client=chroma_client,
+        vector_store = create_vector_store(
+            config=vector_db_config,
             collection_name=args.collectionName,
-            embedding_function=embedding_function
+            embedding_function=embedding_function,
+            client=vector_client,
         )
         logger.info("Storing newly-found document chunks...")
         ids = []

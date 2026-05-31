@@ -13,9 +13,6 @@ from langchain.agents.structured_output import ToolStrategy
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
 from langchain.tools import tool
 from langchain_mcp_adapters.interceptors import ToolCallInterceptor, MCPToolCallRequest
-import chromadb
-from langchain_chroma import Chroma
-from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.tools.retriever import create_retriever_tool
 from langchain.agents.middleware import wrap_tool_call
 from langchain.messages import ToolMessage
@@ -23,6 +20,7 @@ from langchain.agents import AgentState
 
 from knowledgexpert.util import setup_llm
 from knowledgexpert.util import setup_embedding
+from knowledgexpert.vector_backend import VectorDbConfig, create_retriever
 
 class Answer(BaseModel):
     summary: str
@@ -119,7 +117,11 @@ class Raven:
                 self.args.mcpConfig, insecure=self.args.mcpInsecure)))
 
         if not self.args.skipRetrieval:
-            self.retriever = self._setup_vector_stores(self.args.chromaHost, self.args.chromaPort, self.args.baseCollections, self.args.ensembleWeights, self.args.embeddings)
+            self.retriever = self._setup_vector_stores(
+                self.args.baseCollections,
+                self.args.ensembleWeights,
+                self.args.embeddings,
+            )
             if self.args.retrievalType == 'agenticRag':
                 retriever_tool = create_retriever_tool(self.retriever,
                                                        name=self.args.vectorToolName,
@@ -206,36 +208,18 @@ class Raven:
             "Loaded tools based on configuration file: %s", mcp_config)
         return tools
 
-    def _setup_vector_stores(self, chroma_host, chroma_port, base_collections, ensemble_weights, embeddings):
+    def _setup_vector_stores(self, base_collections, ensemble_weights, embeddings):
         embeddings_dict = {}
         for embedding in embeddings:
             embeddings_dict[embedding['embeddingId']
                             ] = setup_embedding(embedding)
-        chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
-        retrievers = []
-        weights = []
-        for i, collection_element in enumerate(base_collections):
-            vectorDb_kwargs = {"search_kwargs": {}}
-            if 'k' in collection_element and collection_element['k']:
-                vectorDb_kwargs["search_kwargs"]["k"] = collection_element['k']
-            if 'searchAlgorithm' in collection_element and collection_element['searchAlgorithm'] == "similarity_score_threshold" and 'scoreThreshold' in collection_element and collection_element['scoreThreshold']:
-                vectorDb_kwargs["search_kwargs"]["score_threshold"] = collection_element['scoreThreshold']
-
-            vector_db = Chroma(
-                client=chroma_client, collection_name=collection_element['collectionName'],
-                embedding_function=embeddings_dict[collection_element['embeddingId']])
-            retrievers.append(vector_db.as_retriever(
-                search_type=collection_element['searchAlgorithm'], **vectorDb_kwargs))
-            # Use ensemble_weights[i] if available, else default to 1.0
-            if ensemble_weights and i < len(ensemble_weights):
-                weights.append(ensemble_weights[i])
-            else:
-                weights.append(1.0)
-        # If only one retriever, return it directly
-        if len(retrievers) == 1:
-            return retrievers[0]
-        # Otherwise, return an ensemble retriever
-        return EnsembleRetriever(retrievers=retrievers, weights=weights)
+        vector_db_config = VectorDbConfig.from_mapping(vars(self.args))
+        return create_retriever(
+            config=vector_db_config,
+            base_collections=base_collections,
+            ensemble_weights=ensemble_weights,
+            embeddings_dict=embeddings_dict,
+        )
 
     def invoke(self, input: dict, context: dict | None = None, config: dict | None = None):
         context = context or {}
