@@ -4,7 +4,12 @@ from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, 
 from knowledgexpert.chunker import create_chunks
 from knowledgexpert.util import embedding_mapper, setup_embedding
 from knowledgexpert.html_splitter import HTMLTextSplitter
-from knowledgexpert.vector_backend import VectorDbConfig, create_vector_client, create_vector_store
+from knowledgexpert.vector_backend import (
+    VectorDbConfig,
+    clear_vector_collection,
+    create_vector_client,
+    create_vector_store,
+)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge Store Builder")
@@ -75,9 +80,11 @@ def main(args):
         vector_client = create_vector_client(vector_db_config)
         if args.clear:
             logger.info("Purging old values from store...")
-            collection_name = vector_db_config.with_collection_name(args.collectionName)
-            if collection_name in [col.name for col in vector_client.list_collections()]:
-                vector_client.delete_collection(collection_name)
+            clear_vector_collection(
+                config=vector_db_config,
+                collection_name=args.collectionName,
+                client=vector_client,
+            )
         
         embedding_function = setup_embedding(embedding_mapper(None, args.embeddingProvider, args.embeddingApiUrl, args.embeddingModel))
         

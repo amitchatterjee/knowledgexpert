@@ -1,4 +1,5 @@
 {
+    "python.defaultInterpreterPath": "/home/amit/ai-venv/bin/python",
     "chat.mcp.serverSampling": {
         "knowledgexpert/.vscode/mcp.json: AutoGeek": {
             "allowedModels": [

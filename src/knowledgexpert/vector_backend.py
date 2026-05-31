@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any, Mapping
 
 import chromadb
+from opensearchpy import OpenSearch
+from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_chroma import Chroma
 from langchain_classic.retrievers import EnsembleRetriever
 
@@ -35,10 +35,31 @@ class VectorDbConfig:
             return f"{self.index_prefix}{logical_name}"
         return logical_name
 
+    def endpoint_url(self) -> str:
+        scheme = "https" if self.use_ssl else "http"
+        return f"{scheme}://{self.host}:{self.port}"
+
+    def http_auth(self) -> tuple[str, str] | None:
+        if self.username is None or self.password is None:
+            return None
+        return (self.username, self.password)
+
 
 def create_vector_client(config: VectorDbConfig):
     if config.provider == "chroma":
         return chromadb.HttpClient(host=config.host, port=config.port)
+    if config.provider == "opensearch":
+        client_kwargs: dict[str, Any] = {
+            "use_ssl": config.use_ssl,
+            "verify_certs": False,
+            "ssl_assert_hostname": False,
+            "ssl_show_warn": False,
+        }
+        http_auth = config.http_auth()
+        if http_auth:
+            client_kwargs["http_auth"] = http_auth
+
+        return OpenSearch(config.endpoint_url(), **client_kwargs)
     raise NotImplementedError(
         f"Vector DB provider '{config.provider}' is not implemented yet"
     )
@@ -57,6 +78,45 @@ def create_vector_store(
             collection_name=config.with_collection_name(collection_name),
             embedding_function=embedding_function,
         )
+    if config.provider == "opensearch":
+        store_kwargs: dict[str, Any] = {
+            "use_ssl": config.use_ssl,
+            "verify_certs": False,
+            "ssl_assert_hostname": False,
+            "ssl_show_warn": False,
+        }
+        http_auth = config.http_auth()
+        if http_auth:
+            store_kwargs["http_auth"] = http_auth
+
+        return OpenSearchVectorSearch(
+            opensearch_url=config.endpoint_url(),
+            index_name=config.with_collection_name(collection_name),
+            embedding_function=embedding_function,
+            **store_kwargs,
+        )
+    raise NotImplementedError(
+        f"Vector DB provider '{config.provider}' is not implemented yet"
+    )
+
+
+def clear_vector_collection(
+    config: VectorDbConfig,
+    collection_name: str,
+    client=None,
+) -> None:
+    resolved_name = config.with_collection_name(collection_name)
+    vector_client = client or create_vector_client(config)
+
+    if config.provider == "chroma":
+        if resolved_name in [col.name for col in vector_client.list_collections()]:
+            vector_client.delete_collection(resolved_name)
+        return
+
+    if config.provider == "opensearch":
+        vector_client.indices.delete(index=resolved_name, ignore_unavailable=True)
+        return
+
     raise NotImplementedError(
         f"Vector DB provider '{config.provider}' is not implemented yet"
     )
@@ -68,12 +128,9 @@ def create_retriever(
     ensemble_weights: list[float],
     embeddings_dict: dict[str, Any],
 ):
-    if config.provider != "chroma":
-        raise NotImplementedError(
-            f"Vector DB provider '{config.provider}' is not implemented yet"
-        )
-
-    vector_client = create_vector_client(config)
+    vector_client = None
+    if config.provider == "chroma":
+        vector_client = create_vector_client(config)
     retrievers = []
     weights = []
 
