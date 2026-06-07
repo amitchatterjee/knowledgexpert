@@ -21,13 +21,13 @@
         }
     ],
 
-    "vectorDbProvider": "chroma",
-    "vectorDbHost": "localhost",
-    "vectorDbPort": 8000,
-    "vectorDbUseSsl": false,
-    "vectorDbUsername": null,
-    "vectorDbPassword": null,
-    "vectorDbIndexPrefix": null,
+    "vectorDbProvider": "${VECTOR_DB_PROVIDER}",
+    "vectorDbHost": "${VECTOR_DB_HOST}",
+    "vectorDbPort": "${VECTOR_DB_PORT}",
+    "vectorDbUseSsl": "${VECTOR_DB_USE_SSL}",
+    "vectorDbUsername": "${VECTOR_DB_READ_USERNAME}",
+    "vectorDbPassword": "${VECTOR_DB_READ_PASSWORD}",
+    "vectorDbIndexPrefix": "${VECTOR_DB_INDEX_PREFIX}",
     "baseCollections": [
         {
             "collectionName": "app_docs_collection",

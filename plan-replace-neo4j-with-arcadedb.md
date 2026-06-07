@@ -7,6 +7,10 @@ Important clarification:
 - ArcadeDB migration is graph-only.
 - It is independent from vector backend choices (OpenSearch or ChromaDB).
 
+Capability note:
+- ArcadeDB can also support vector and search workloads, so it is a potential all-in-one database option.
+- This plan intentionally does not include migrating vector/search to ArcadeDB at this time.
+
 ## Scope
 
 ### In scope
@@ -23,6 +27,7 @@ Important clarification:
 Boundary statement:
 - This plan does not change vector ingestion or vector retrieval architecture.
 - No coupling between ArcadeDB decisions and OpenSearch/Chroma decisions is required.
+- Evaluating ArcadeDB as a unified graph+vector+search backend may be considered in a separate future plan.
 
 ## Current Neo4j Touchpoints
 

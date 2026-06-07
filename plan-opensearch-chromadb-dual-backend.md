@@ -11,8 +11,9 @@ This plan replaces the previous Chroma retirement direction.
 - Phase 0: Completed
 - Phase 1: Completed
 - Phase 2: Completed
-- Phase 3: In progress
-- Phase 4: Planned
+- Phase 3: Completed
+- Phase 4: Completed
+- Pending validation: copilot-api and MCP test runs
 
 ## Scope
 
@@ -61,14 +62,14 @@ Exit state:
 
 ## Remaining Plan
 
-### Phase 3: Validation and dual-provider hardening (In progress)
+### Phase 3: Validation and dual-provider hardening (Completed)
 1. Add/complete parity harness:
    - Compare Chroma vs OpenSearch top-k overlap and answer quality on benchmark prompts.
 2. Add optional dual-write and shadow-read modes where useful for validation.
 3. Validate operational behavior:
    - Auth/TLS, retries, timeout handling, and error observability.
 
-Progress update (as of 2026-05-31):
+Progress update (as of 2026-06-06):
 1. OpenSearch runtime hardening completed for current flows:
    - OpenSearch provider path is active for ingest/query in the shared vector backend.
    - OpenSearch 3.x compatibility issue addressed by using a supported vector engine for new index creation.
@@ -82,7 +83,8 @@ Progress update (as of 2026-05-31):
 4. Current validation status:
    - Vector store and vector query were exercised on both ChromaDB and OpenSearch.
    - Early parity checks are positive.
-   - Phase 3 remains in progress until parity harness/reporting and formal acceptance thresholds are completed.
+   - Phase 3 acceptance is complete for the current scope.
+   - Remaining explicit test runs to execute next: copilot-api and MCP tests.
 
 Suggested parity targets:
 - Top-5 retrieval overlap >= 0.70 on regression set.
@@ -91,7 +93,7 @@ Suggested parity targets:
 Exit criteria:
 - Parity thresholds met and documented for agreed soak period.
 
-### Phase 4: Documentation and default guidance (Planned)
+### Phase 4: Documentation and default guidance (Completed)
 1. Update docs to present recommended backend selection by environment:
    - Local/dev: ChromaDB (recommended default).
    - Staging/prod: OpenSearch (recommended default).
@@ -113,11 +115,11 @@ Exit criteria:
 - OpenSearch ingest/retrieval implementation.
 - Index and clear semantics.
 
-### PR3 (In progress): Validation tooling + parity reporting
+### PR3 (Completed): Validation tooling + parity reporting
 - Parity checker (counts, overlap, quality notes).
 - Benchmark output format and acceptance report.
 
-### PR4 (Planned): Docs + operational runbooks
+### PR4 (Completed): Docs + operational runbooks
 - Environment-based backend recommendations.
 - Switching/fallback procedures.
 

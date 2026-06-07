@@ -79,9 +79,9 @@ def parse_args(args_list=None):
     parser.add_argument("--embeddingProvider", default='ollama', choices=['openai', 'ollama'], help="Default embedding provider (default: ollama)")
     parser.add_argument("--embeddings", nargs='+', default=[None], help='Embeddings used for this application. Accepts one or more values. Each value is of the format: <embedding_id>:[embedding_url][|][embedding_model][|][k][|][score_threshold][|][embedding_id]')
 
-    parser.add_argument("--vectorDbProvider", default='chroma', choices=['chroma', 'opensearch'], help="Vector DB provider (default: chroma)")
-    parser.add_argument("--vectorDbHost", default='localhost', help="Vector DB host (default: localhost)")
-    parser.add_argument("--vectorDbPort", type=int, default=8000, help="Vector DB port (default: 8000)")
+    parser.add_argument("--vectorDbProvider", default=None, choices=['chroma', 'opensearch'], help="Vector DB provider (default: chroma)")
+    parser.add_argument("--vectorDbHost", default=None, help="Vector DB host (default: localhost)")
+    parser.add_argument("--vectorDbPort", type=int, default=None, help="Vector DB port (default: 8000)")
     parser.add_argument("--vectorDbUseSsl", action="store_true", help="Use TLS when connecting to the vector DB (default: false)")
     parser.add_argument("--vectorDbUsername", default=None, help="Optional vector DB username")
     parser.add_argument("--vectorDbPassword", default=None, help="Optional vector DB password")
@@ -145,6 +145,39 @@ def parse_args(args_list=None):
     for attr in ["embeddingProvider","embeddingApiUrl","embeddingModel"]:
         if hasattr(args, attr):
             delattr(args, attr)
+
+    return apply_vector_env_defaults(args)
+
+
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def apply_vector_env_defaults(args):
+    if args.vectorDbProvider is None:
+        args.vectorDbProvider = os.getenv("VECTOR_DB_PROVIDER", "chroma")
+
+    if args.vectorDbHost is None:
+        args.vectorDbHost = os.getenv("VECTOR_DB_HOST", "localhost")
+
+    if args.vectorDbPort is None:
+        default_port = 9200 if args.vectorDbProvider == "opensearch" else 8000
+        args.vectorDbPort = int(os.getenv("VECTOR_DB_PORT", str(default_port)))
+
+    if not args.vectorDbUseSsl:
+        args.vectorDbUseSsl = _env_bool("VECTOR_DB_USE_SSL", False)
+
+    if args.vectorDbUsername is None:
+        args.vectorDbUsername = os.getenv("VECTOR_DB_READ_USERNAME")
+
+    if args.vectorDbPassword is None:
+        args.vectorDbPassword = os.getenv("VECTOR_DB_READ_PASSWORD")
+
+    if args.vectorDbIndexPrefix is None:
+        args.vectorDbIndexPrefix = os.getenv("VECTOR_DB_INDEX_PREFIX")
 
     return args
 

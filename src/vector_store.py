@@ -1,4 +1,5 @@
 import argparse
+import os
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import TokenTextSplitter, PythonCodeTextSplitter, MarkdownTextSplitter
 from knowledgexpert.chunker import create_chunks
@@ -18,9 +19,9 @@ def parse_args():
     parser.add_argument("--chunkOverlap", type=int, default=200, help="Chunk overlap for splitters (tokens)")
     parser.add_argument("--log", type=str, default="INFO", help="Log severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
     parser.add_argument("--collectionName", type=str, default="all_collection", help="Logical vector collection/index name")
-    parser.add_argument("--vectorDbProvider", default='chroma', choices=['chroma', 'opensearch'], help="Vector DB provider (default: chroma)")
-    parser.add_argument("--vectorDbHost", type=str, default="localhost", help="Vector DB host")
-    parser.add_argument("--vectorDbPort", type=int, default=8000, help="Vector DB port")
+    parser.add_argument("--vectorDbProvider", default=None, choices=['chroma', 'opensearch'], help="Vector DB provider (default: chroma)")
+    parser.add_argument("--vectorDbHost", type=str, default=None, help="Vector DB host")
+    parser.add_argument("--vectorDbPort", type=int, default=None, help="Vector DB port")
     parser.add_argument("--vectorDbUseSsl", action="store_true", help="Use TLS when connecting to the vector DB")
     parser.add_argument("--vectorDbUsername", default=None, help="Optional vector DB username")
     parser.add_argument("--vectorDbPassword", default=None, help="Optional vector DB password")
@@ -32,6 +33,39 @@ def parse_args():
     parser.add_argument("--print", action="store_true", help="Print each chunk's source, metadata, and content")
     parser.add_argument("--store", action="store_true", help="Store the chunks in the vector store")
     args = parser.parse_args()
+    return apply_vector_env_defaults(args)
+
+
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def apply_vector_env_defaults(args):
+    if args.vectorDbProvider is None:
+        args.vectorDbProvider = os.getenv("VECTOR_DB_PROVIDER", "chroma")
+
+    if args.vectorDbHost is None:
+        args.vectorDbHost = os.getenv("VECTOR_DB_HOST", "localhost")
+
+    if args.vectorDbPort is None:
+        default_port = 9200 if args.vectorDbProvider == "opensearch" else 8000
+        args.vectorDbPort = int(os.getenv("VECTOR_DB_PORT", str(default_port)))
+
+    if not args.vectorDbUseSsl:
+        args.vectorDbUseSsl = _env_bool("VECTOR_DB_USE_SSL", False)
+
+    if args.vectorDbUsername is None:
+        args.vectorDbUsername = os.getenv("VECTOR_DB_WRITE_USERNAME", None)
+
+    if args.vectorDbPassword is None:
+        args.vectorDbPassword = os.getenv("VECTOR_DB_WRITE_PASSWORD", None)
+
+    if args.vectorDbIndexPrefix is None:
+        args.vectorDbIndexPrefix = os.getenv("VECTOR_DB_INDEX_PREFIX")
+
     return args
 
 def main(args):
