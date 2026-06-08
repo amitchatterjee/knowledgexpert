@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
 
   chromadb:
+    profiles: ["dev"]
     image: chromadb/chroma
     container_name: chromadb
     ports:

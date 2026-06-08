@@ -85,13 +85,27 @@ docker compose -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml 
 ln -s $KNOWLEDGEXPERT_HOME/infrastructure/conf $HOME/.knowledgexpert/conf
 ```
 
+### Setup Environment
+
+Run this once per shell session to choose the environment profile. You can add this to ~/.bashrc to make it permanent
+
+```bash
+# valid values: dev | perf
+# Uses Opensearch
+export KNOWLEDGEXPERT_ENV=perf
+
+# Uses Chromadb
+export KNOWLEDGEXPERT_ENV=dev
+
+```
+
 ## Infrastructure operations
 
 ### Bring up the infrastructure services
 
 ```bash
-# Start services
-docker compose -p '' -f $KNOWLEDGEXPERT_HOME/infrastructure/docker/docker-compose.yml up -d
+$KNOWLEDGEXPERT_HOME/infrastructure/docker/compose.sh up -d
+
 ```
 
 #### Setup the models, etc.
@@ -199,22 +213,6 @@ curl -k -X PUT "https://localhost:9200/msrp/_mapping" \
 
 Use the admin account here because index mapping updates are a security-sensitive operation. Use `bob` only for the bulk ingest step.
 
-### Setup Environment
-
-Run this once per shell session to choose the environment profile. Then execute commands via `dotenv`.
-
-```bash
-# valid values: dev | perf
-# Uses Opensearch
-export KNOWLEDGEXPERT_ENV=perf
-
-# Uses Chromadb
-export KNOWLEDGEXPERT_ENV=dev
-
-# command pattern
-dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- <your command>
-
-```
 
 ### Build graph data
 
@@ -344,15 +342,18 @@ python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py --requestPath $KNOWLEDGEXPERT_HO
 
 ## Execute Knowledgexpert API for VS Code
 ```bash
+dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- \
 uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src" --log-config ~/.knowledgexpert/conf/log-config.yaml
 
 ```
 
 ## Execute Wolfpack MCP
 ```bash
+dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- \
 fastmcp run "$KNOWLEDGEXPERT_HOME/src/wolfpack_mcp.py" --transport http --port 9901 --host 0.0.0.0 --log-level INFO --
 
 # For debugging/inspection, etc.
+dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- \
 fastmcp dev "$KNOWLEDGEXPERT_HOME/src/wolfpack_mcp.py"
 
 # The above command will open a browser and display the inspector. Connect using STDIO transport.

@@ -7,13 +7,14 @@ Run OpenSearch and ChromaDB side-by-side:
 
 This plan replaces the previous Chroma retirement direction.
 
-## Status Snapshot (as of 2026-05-31)
+## Status Snapshot (as of 2026-06-07) — DONE
 - Phase 0: Completed
 - Phase 1: Completed
 - Phase 2: Completed
 - Phase 3: Completed
 - Phase 4: Completed
-- Pending validation: copilot-api and MCP test runs
+- Validation: copilot-api and MCP test runs — Completed
+- Marked done: 2026-06-07
 
 ## Scope
 
