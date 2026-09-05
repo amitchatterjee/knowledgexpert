@@ -23,7 +23,7 @@
     {
       "name": "SearchIndexTool",
       "type": "SearchIndexTool",
-      "description": "Use this tool to search an index by providing two parameters: 'index' for the index name, and 'query' for the OpenSearch DSL formatted query. Only use this tool when both index name and DSL query is available. Available indices: 'msrp' (vehicle MSRP pricing data, fields: make, model, year, trim, msrp, currency, market).",
+      "description": "Search an OpenSearch index by name with an OpenSearch DSL `query`. Supports standard DSL and vector k-NN queries. `query` may be provided as a JSON object (preferred) or as a JSON-encoded string for backward compatibility. Use an index with a vector field and k-NN-capable mapping for vector searches.",
       "attributes": {
         "input_schema": {
           "type": "object",
@@ -32,8 +32,33 @@
               "type": "string"
             },
             "query": {
-              "type": "string",
-              "description": "If you pass raw OpenSearch DSL here, consider changing the type to `object` and validating the structure."
+              "oneOf": [
+                {
+                  "type": "object",
+                  "description": "OpenSearch DSL query object. For vector (k-NN) searches, provide a k-NN query object against an index with a vector field.",
+                  "examples": [
+                    {
+                      "size": 10,
+                      "query": {
+                        "knn": {
+                          "my_vector_field": {
+                            "vector": [
+                              0.12,
+                              0.34,
+                              0.56
+                            ],
+                            "k": 10
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "string",
+                  "description": "JSON-encoded OpenSearch DSL string (legacy/backward-compatible usage)."
+                }
+              ]
             }
           },
           "additionalProperties": false
