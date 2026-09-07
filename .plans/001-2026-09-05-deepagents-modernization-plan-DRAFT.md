@@ -392,9 +392,50 @@ settings framework, no dedicated config class. Two kinds of env var:
   what's left (LLM model, prompt/MCP paths, workspace root) moves to env vars per this section instead
   of surviving as a smaller argparse surface.
 
+**Observability — the same OTel tracing mechanism as `carqna-agent`.** Verified directly against
+`carqna-agent/src/agent/copilotkit_server.py` and its `CLAUDE.md`: LangChain/LangGraph tracing to a
+local Jaeger instance is `langsmith`'s built-in OTel exporter, activated **purely via env vars** — no
+extra dependency or code beyond what's already needed for the checkpointer/LLM plumbing:
+- `LANGSMITH_TRACING_V2=true` + `LANGSMITH_TRACING_MODE=otel` (or `hybrid`, which also sends to
+  LangSmith cloud — needs `LANGSMITH_API_KEY`/`LANGSMITH_PROJECT`, `otel` alone sends to Jaeger only)
+  + `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_SERVICE_NAME` (`knowledgexpert`'s own value — never
+  carqna's, same "reuse the mechanism, not the instance" rule as Postgres/Okta above). **Must be port
+  `4318` (HTTP) with the `/v1/traces` path, not `4317`/gRPC** — `langsmith`'s exporter is hardcoded to
+  HTTP and doesn't append the path itself, a specific gotcha worth preserving verbatim in
+  `knowledgexpert`'s own `.env.example`/docs, not rediscovering the hard way.
+- This part is genuinely front-end-agnostic: nothing in `carqna-agent` wires it up specially for
+  `copilotkit_server.py` — `carqna.py`, its plain CLI runner, has no `langsmith`/OTel code at all and
+  still gets traced spans, since it's just env config the LangChain/LangGraph callback machinery picks
+  up on its own. So once the dependency/infra work below lands, CLI and MCP get tracing for free with
+  no code of their own — but that's deliberately deferred to its own last phase (see Phases below)
+  rather than added incrementally alongside each earlier phase.
+- **AG-UI-specific addition** (part of that same last phase, mirroring `copilotkit_server.py` exactly,
+  applicable once AG-UI itself exists from phase 8): an early, explicit `langsmith.Client()`
+  construction in the FastAPI `lifespan`, before any real request, so `langsmith` registers its OTel
+  `TracerProvider` as the process-global one before `FastAPIInstrumentor.instrument_app(app)`'s
+  HTTP-level spans need to nest under it — plus `FastAPIInstrumentor.instrument_app(app)` itself,
+  called at **module level, before `app = FastAPI(lifespan=lifespan)`'s first ASGI scope**, not inside
+  `lifespan()` — carqna's own comment there documents finding this out the hard way (spans showed up in
+  Jaeger with nothing nested under them until the ordering was fixed). Copy this ordering exactly,
+  don't rediscover it.
+- **MCP-server front-end**: no direct carqna precedent — carqna has no MCP *server* of its own, only an
+  MCP *client* (for OpenSearch). Whether FastMCP has an equivalent HTTP/transport-level instrumentation
+  library is unverified; LangChain/LangGraph-level tracing via env vars still applies regardless, same
+  as CLI.
+- **Infra**: `docker-compose.yml` gains a `jaeger` service (`jaegertracing/all-in-one`, OTLP on
+  `4317`/gRPC + `4318`/HTTP, UI on `16686`) — copied from `carqna-agent`'s `infrastructure/docker/`.
+  This is tool-level observability infra, not application data, so it stays in `knowledgexpert/` per
+  "Repository layout" above — not something that moves to `<app>-rulegen/`.
+- **Dependencies**: `opentelemetry-exporter-otlp`, `opentelemetry-sdk`,
+  `opentelemetry-instrumentation-fastapi` (the last one only actually exercised once AG-UI/phase 8
+  lands, but harmless to add to `pyproject.toml` alongside the others in phase 0).
+
 **Tooling** — new `pyproject.toml` + `uv`-managed venv **inside the project** (`.venv` under
 `knowledgexpert/`, per-project like `knowledgenet` and each `knowledgenet-examples` app), replacing
-`requirements.txt` + the shared `~/ai-venv`, matching `knowledgenet` and `carqna-agent`.
+`requirements.txt` + the shared `~/ai-venv`. **Deliberately diverges from `carqna-agent` here**:
+`carqna-agent` itself uses an external, shared-style venv (`~/carqna.venv`, activated before `uv sync
+--active` per its own `CLAUDE.md`), not an in-project one — `knowledgexpert` follows `knowledgenet`'s
+in-project convention instead, not carqna's, on this specific point.
 
 **Documentation** — both new authoring and refactoring of what exists, not an end-of-project
 afterthought. Each phase below updates the docs it touches as part of that phase, not deferred to a
@@ -542,3 +583,9 @@ None outstanding — everything raised during design discussion has been resolve
    infra, vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`/`copilot_api` commands),
    while gaining an OpenSearch-as-MCP-tool section (how to define an application's collections) if it
    didn't already land in an earlier phase.
+10. Observability (see "Observability" above) — deliberately last, once the rest of the platform is
+    functionally complete: OTel dependencies, the `jaeger` docker-compose service, env-var-only
+    LangChain/LangGraph tracing (covers CLI and MCP retroactively, no code needed), and the AG-UI-only
+    `FastAPIInstrumentor`/early-`langsmith.Client()` wiring (mirroring `copilotkit_server.py`'s exact
+    ordering).
+    *Docs*: `README.md`/dev-setup doc gain the OTel env vars and the `4318`/`/v1/traces` gotcha.
