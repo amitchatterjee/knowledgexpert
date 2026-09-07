@@ -6,12 +6,23 @@ started. Further design conversation is expected before this moves to `-INPROG`.
 ## Objective
 
 Retire the LangChain-classic / vector-store generation of `knowledgexpert` (`expert.py`, `raven.py`,
-`wolfpack.py`, and their OpenSearch/ChromaDB/Neo4j-backed retrieval) and rebuild the artifact-generation
-tool on [DeepAgents](https://github.com/langchain-ai/deepagents), modeled directly on the sibling
+`wolfpack.py`, and their ChromaDB/Neo4j-backed retrieval, plus OpenSearch's *use as that same
+doc-retrieval mechanism*) and rebuild the artifact-generation tool on
+[DeepAgents](https://github.com/langchain-ai/deepagents), modeled directly on the sibling
 `carqna-agent` project's architecture. Preserve `wolfpack`'s existing behavioral contract — a
 spec-driven request that produces rule code, rule configuration, and/or test artifacts — while
 replacing vector retrieval with a curated, filesystem-backed knowledge base and replacing ad hoc disk
-writes with DeepAgents' backend abstraction.
+writes with DeepAgents' backend abstraction. **OpenSearch itself is not retired** — it continues as an
+MCP-exposed live-search tool subagents can use (vector and full-text search over application-specific
+collections), the same role `AutoGeek` plays for `carqna-agent`; only its prior use *as the knowledge
+base* goes away, since the knowledge base is filesystem-backed now.
+
+**This is a general-purpose rule-generation platform, not an `autoins`-specific tool.** Nothing in the
+architecture is coupled to `autoins` — every application-specific concept (knowledge base, spec
+template/validation, exemplars, config/testing conventions) is per-target-application data, not code.
+`autoins` is the reference application used to build and test the platform end to end, the same role
+`carqna-agent`'s insurance domain plays for that project's architecture — a worked example, not a
+dependency.
 
 ## Background
 
@@ -42,7 +53,10 @@ Q&A). This plan is largely "apply that same architecture to artifact generation 
 
 **Knowledge base** — DeepAgents virtual filesystems (`BackendProtocol`; local `FilesystemBackend` to
 start, RustFS-compatible `S3Backend` later, per `carqna-agent/src/agent/s3_backend.py`), curated by
-the tool's user (no ingestion pipeline). **A separate, fully self-contained virtual filesystem per
+the tool's user (no ingestion pipeline). **Knowledge-base backend choice is independent of front-end
+mode** — it's a deployment/config decision (local disk vs. RustFS/S3), not tied to CLI vs. AG-UI vs.
+MCP. A CLI user can just as well point at an S3-hosted knowledge base as a local one; only the
+*workspace* backend is mode-determined (see "Workspace" below). **A separate, fully self-contained virtual filesystem per
 target application** — not one shared backend, not a runtime-combined shared+per-app pair. Each
 application's backend holds its own copy of everything, including `knowledgenet-foundation/`.
 Duplicating foundational content across applications is intentional and necessary, not just a
@@ -50,7 +64,7 @@ simplicity tradeoff: **different target applications may run on different `knowl
 different functional/programming interfaces**, so a single shared foundational copy would actually be
 wrong for any application not pinned to the latest version — each app's foundational docs must match
 the `knowledgenet` version that app actually uses. A subagent only ever talks to one backend, the
-current app's; no composite/multi-backend mechanism needed. Six top-level directories per application:
+current app's; no composite/multi-backend mechanism needed. Seven top-level directories per application:
 
 - **`knowledgenet-foundation/`** — `knowledgenet` framework docs (`concepts.md`, `rule-service.md`,
   `rules-authoring.md`, generated API docs) **matching the specific `knowledgenet` version this
@@ -58,9 +72,17 @@ current app's; no composite/multi-backend mechanism needed. Six top-level direct
 - **`application-domain/`** — business/domain meaning (e.g. `autoins/docs/description.md`,
   `entity-relationships.md`).
 - **`application-architecture/`** (renamed from `rules-engine-architecture/` — clearer alongside
-  `knowledgenet-foundation/`, which already owns "rules engine") — the app's fact model/entities,
-  loaders/helpers, and the **specification template** the supervisor interprets requests against.
-  Resolved: the spec template is per-app knowledge, not a foundational baseline.
+  `knowledgenet-foundation/`, which already owns "rules engine") — the app's fact model/entities and
+  loaders/helpers.
+- **`specification-guidelines/`** (new — split out on its own, not folded into
+  `application-architecture/`, since it's authored/versioned as its own unit and is central enough to
+  warrant it) — the app's **specification template** the supervisor interprets requests against,
+  instructions on how to populate it, and the **sufficiency criteria the rule-spec-validator subagent
+  checks a submitted spec against** (see "Graph" below) — what counts as clear enough to proceed
+  (possibly with stated assumptions) versus insufficient (must be rejected with specific gaps).
+  Written as free-form guidance, consistent with every other directory here, not a rigid
+  machine-checkable schema — the validator subagent interprets it the same way the other subagents
+  interpret their own guideline directories.
 - **`configuration-guidelines/`** — `rule-config.json` conventions, split out from
   `application-architecture/` for the same reason as testing below.
 - **`exemplars/`** — a deliberately curated set of reference rule implementations for the
@@ -71,6 +93,45 @@ current app's; no composite/multi-backend mechanism needed. Six top-level direct
   promote to expected" workflow). Split out from `application-architecture/`: different lifecycle/owner
   than the app's code architecture, and maps directly to the test-generator subagent's dedicated
   grounding context.
+
+**Repository layout — per-application content lives with the application, not with the tool.** The
+seven-directory knowledge base above, the app-specific prompts (see "Prompts and configuration" below),
+the MCP tool configuration (see "MCP services — live application data" below), and any infrastructure needed to
+host that app's live data (e.g. the OpenSearch deployment currently under `knowledgexpert/infrastructure/`
+serving `autoins`'s MSRP pricing data) are all curated data *about* a target application, not operational
+plumbing for the tool — so they live physically alongside that application, not inside `knowledgexpert`.
+For `autoins`: a new sibling folder `knowledgenet-examples/autoins-rulegen/`, not a directory under
+`knowledgexpert`:
+
+```
+knowledgenet-examples/
+  autoins/                    (existing — the application itself)
+  autoins-rulegen/            (new)
+    knowledge/
+      knowledgenet-foundation/
+      application-domain/
+      application-architecture/
+      specification-guidelines/
+      configuration-guidelines/
+      exemplars/
+      testing-guidelines/
+    prompts/                  supervisor + subagent prompts tuned for autoins
+    mcp/                      optional — omitted entirely if autoins defines no MCP services
+    infra/                    optional — docker-compose/admin fixtures/data for whatever live-data
+                               service the MCP config above points at (e.g. OpenSearch)
+```
+
+`knowledgexpert` itself keeps only what's genuinely generic: the DeepAgents graph/agent code,
+LLM/model config, the Postgres checkpointer, and the CLI/MCP-server/AG-UI front-end code — plus,
+optionally, a minimal generic fallback prompt template for bootstrapping a brand-new target application
+before anyone's curated real content for it. This generalizes beyond `autoins`: any future target
+application gets its own `<app>-rulegen/` sibling folder wherever that application's repo lives —
+`knowledgexpert` never accumulates a growing pile of per-application subdirectories inside its own repo.
+
+This also makes concrete something "Prompts and configuration" below already implied but left
+physically ambiguous: since prompts are application-configurable, not just role-configurable, they're
+per-app curated content like the knowledge base — they live in `<app>-rulegen/prompts/`, not in
+`knowledgexpert`.
 
 **Workspace** — separate from the knowledge-base content entirely, but **the same live backend
 mechanism**, unified via `deepagents.backends.composite.CompositeBackend` (confirmed present in the
@@ -84,7 +145,7 @@ stays read-only (deny write/edit/delete) while `/workspace/**` is read-write, wi
 
 **These two routes vary along completely different axes, and are never conflated**: `/knowledge/` is
 scoped **per application** — one shared, self-contained backend per target app (e.g. `autoins`'s
-six-directory VFS), the same physical location for every user working on that application, per the
+seven-directory VFS), the same physical location for every user working on that application, per the
 per-application knowledge-base decision above. `/workspace/` is scoped **per user** — never shared,
 never duplicated with knowledge-base content, physically separate storage. A session for one user
 working on `autoins` mounts that user's own workspace `root_dir` at `/workspace/` alongside `autoins`'s
@@ -101,8 +162,11 @@ further verification needed.
 
 **What's mounted at `/workspace/` is the only thing that varies by mode** — the subagent's tool calls
 are identical either way:
-- **CLI** — `FilesystemBackend` rooted at a local directory the user points the tool at (they manage
-  git themselves). Writes/edits land on disk immediately.
+- **CLI** — `FilesystemBackend` rooted at a local directory the user points the tool at via a
+  `WORKSPACE_ROOT` env var (see "Configuration approach" below; they manage git themselves). Writes/edits
+  land on disk immediately. Always local, regardless of what the knowledge-base backend for this run is
+  (local or S3/RustFS) — the two are independent choices. No authentication — the CLI runs as whatever
+  local user invoked it, same as `wolfpack_cli.py` today.
 - **AG-UI** — `FilesystemBackend`/`S3Backend` rooted at a per-user, pre-provisioned network-filesystem
   path. Git lifecycle (clone/pull/push) is **out of scope** — assume the workspace already exists.
   **Multi-user isolation, resolved**: `FilesystemBackend(root_dir=..., virtual_mode=True)` (the
@@ -145,15 +209,52 @@ that single file through its live workspace-mounted backend if the fix needs bro
 also removes the earlier gap around feedback referencing a file the session didn't itself
 generate/track: the subagent can find it via `glob`/`grep` instead of requiring a tracked path.
 
+**MCP services — live application data.** A target application may configure **one or more** MCP
+services the agent can use during generation, each exposing live, queryable data a rule might need to
+check against — not a single fixed integration. OpenSearch is one such service, not the only kind; a
+different application (or `autoins` itself, over time) could equally configure a different MCP-exposed
+database, a REST-backed service, or several at once. **For `autoins` specifically**, OpenSearch is used
+to store pricing tables and contracts (extending the existing MSRP/car-pricing example) — the concrete
+instance, not the general mechanism. Distinct from, and orthogonal to, both the knowledge-base backend
+and the workspace backend: this is for live data an agent queries through a tool call, not documents it
+reads by browsing a directory tree. Mirrors `carqna-agent`'s `car_price_expert`/`AutoGeek` pattern
+exactly: an MCP-backed tool set (`ListIndexTool`/`SearchIndexTool`-style — list an index before
+searching it, never guess a name) given to whichever subagent needs it, on top of its
+`CompositeBackend` file access — MCP tools and backend-provided file tools coexist on the same subagent
+without conflict, same as `carqna-agent`'s `main_agent`. The underlying mechanism is what `raven.py`
+already does (`_setup_mcp_tools`, `MultiServerMCPClient`, a JSON MCP config) — unchanged as a mechanism,
+but now **application-scoped**: which MCP services a target app has, if any, and what each one exposes,
+is per-application configuration (alongside the prompts externalization described above and physically
+located per "Repository layout" above), not something every application gets by default.
+
+**MCP services are optional per application, not a universal capability.** Many target applications
+will need none at all — no live data to check against, everything a rule needs already lives in the
+curated knowledge base. Concretely: the MCP config (and the description of what each service/collection
+contains) lives in `<app>-rulegen/mcp/`, and that directory simply doesn't exist for an application
+with no MCP needs. Subagent construction must treat "no MCP config present for this app" as the normal,
+expected default — attach zero MCP tools and move on — rather than requiring every app to explicitly
+opt out via a flag (the inverse of `raven.py`'s current `skipMcpTools`, which defaults to *on* and has
+to be told to skip). Retirement scope for OpenSearch's *prior* role (doc/rule ensemble retrieval, not
+this one) is narrowed accordingly — see "Retirement" below.
+
 **Graph** — a DeepAgents supervisor/subagent graph (mirrors `carqna-agent/src/agent/graph.py`),
 replacing `wolfpack.py`:
 - **Supervisor** — interprets an app-specific specification template (format varies per application;
   the supervisor must read/understand whatever template the target app defines) plus the free-form
   ask, classifies the request (code-generation / config-generation / test-generation — one or more —
-  **or feedback on previously generated artifacts**, see "Conversational memory" below), and
-  delegates. Behavioral equivalent of `wolfpack`'s `analyst` + `request_router_node`.
+  **feedback on previously generated artifacts** (see "Conversational memory" below), **or a
+  clarification reply to the rule-spec-validator** (see "Rule spec validation" below)), and delegates.
+  For a fresh generation request, the supervisor routes to **rule-spec-validator first** — it does not
+  dispatch to code/config/test-generator until the validator reports the spec sufficient. Behavioral
+  equivalent of `wolfpack`'s `analyst` + `request_router_node`, extended with this validation gate.
+- **rule-spec-validator** subagent (new — not present in `wolfpack`) — checks a submitted spec against
+  the target app's `specification-guidelines/` (template + population instructions + sufficiency
+  criteria) before any generation happens. See "Rule spec validation" below for the full behavior.
 - **code-generator** subagent — writes `@ruledef` rule code. Grounded in foundational + app-specific +
-  exemplar knowledge layers.
+  exemplar knowledge layers. **Also gets whichever MCP services the target application defines** (see
+  "MCP services — live application data" below) — e.g. a rule that needs to check a value against a
+  live reference dataset (OpenSearch for `autoins`, something else for another application) rather than
+  something curated as static knowledge-base content.
 - **config-generator** subagent — writes/edits `rule-config.json` entries. Must actually be built this
   time (`wolfpack`'s `implementor` never was). Routable directly for config-only asks (e.g. "change
   this rule's rank"), and always invoked alongside code-generation for a new rule, per the app's
@@ -164,12 +265,54 @@ replacing `wolfpack.py`:
   understanding of the expected-results artifact from the spec/rules alone, without running anything
   to verify or generate it.
 
-(Resolved: a single supervisor + these 3 subagents is sufficient — config-generation stays its own
-subagent rather than merging into code-generation, despite the two usually firing together.)
+(Resolved: a single supervisor + these 4 subagents — rule-spec-validator, code-generator,
+config-generator, test-generator — is sufficient. config-generation stays its own subagent rather than
+merging into code-generation, despite the two usually firing together; validation stays its own
+subagent rather than folding into the supervisor, since "is this spec good enough" is a materially
+different judgment from "which subagent handles this" and deserves its own dedicated grounding in
+`specification-guidelines/`.)
 
-**Conversational memory / iterative feedback** — new functionality, not present in `wolfpack` today
-(its `SqliteSaver` checkpointer is wired up but the graph doesn't use conversation history to inform
-revision — every request is generated fresh). Flow: a human runs the generated code/tests themselves
+**Rule spec validation** — new functionality, the gate every fresh generation request passes through
+before code-generator/config-generator/test-generator ever run. Two governing rules:
+- If the spec is clear enough to proceed but required filling in some gap with a reasonable
+  assumption, generation may proceed, but **the assumption must be explicitly stated** in the
+  response — never silently made. This applies at two levels: the validator's own upfront assumptions
+  (documented in its sufficiency check) *and* any further assumption a generator subagent discovers
+  it needs to make once it's actually deep in code/config/test detail — both must surface, not just
+  the first.
+- If the spec is not clear enough to proceed at all, **no generator subagent runs**. The validator
+  reports why (the specific gaps) and what additional information is required — the supervisor returns
+  this to the caller directly instead of dispatching generation work against an insufficient spec.
+
+Output contract (conceptually — mirrors the existing `AnalystOutput`/`CodingOutput`-style structured
+outputs in `structures.py`): `sufficient: bool`, `assumptions: list[str]` (stated, non-blocking gaps
+it's comfortable proceeding on), `gaps: list[str]` (blocking, populated only when `sufficient=false`).
+When `sufficient=true`, the supervisor forwards `assumptions` to whichever generator(s) it dispatches
+to, so those assumptions are carried into the generated artifact's own output rather than needing to be
+independently rediscovered or silently dropped.
+
+**This is an iterative loop, not a one-shot gate**: when `sufficient=false`, the human (or calling
+agentic tool) replies with clarification in the *same* conversation — the supervisor classifies this as
+a reply to the validator (not a new request, not feedback on generated output, since nothing was
+generated yet) and routes back to rule-spec-validator, which re-checks the accumulated spec against
+`specification-guidelines/` and either passes it on or asks for more. This loop rides the same
+Postgres-backed checkpointer as the post-generation feedback loop below, but is a **distinct** loop:
+pre-generation (validator ↔ human, before any artifact exists) versus post-generation (generator ↔
+human, revising an artifact that already exists) are routed differently by the supervisor's
+classification and never conflated.
+
+Worth calling out explicitly: this validate → surface gaps → accept clarification → re-validate loop
+is, in embryonic form, an interactive spec-authoring tool — a natural direction for this to grow into
+(e.g. eventually drafting a spec from scratch through conversation, not just validating one supplied
+whole). That's a plausible future extension this design enables, not something scoped/built now — see
+"Explicitly out of scope" below.
+
+**Conversational memory / iterative feedback (post-generation loop)** — new functionality, not present
+in `wolfpack` today (its `SqliteSaver` checkpointer is wired up but the graph doesn't use conversation
+history to inform revision — every request is generated fresh). This is the **post-generation**
+counterpart to the pre-generation validator loop described above — it fires only after an artifact has
+actually been generated; the two are never conflated (see "Rule spec validation" above). Flow: a human
+runs the generated code/tests themselves
 (test execution is explicitly out of scope for the agent — see "Test tool integration" below) and
 reports back issues or requested changes in the same conversation. The supervisor must recognize this
 as feedback on prior output — not a new unrelated request — and route it to whichever subagent(s)
@@ -189,6 +332,9 @@ the prior turn(s) for that subagent to make a targeted revision rather than rege
 - Applies across all three front-ends: CLI (replacing `wolfpack_cli.py`'s SQLite checkpointer),
   MCP (`wolfpack_mcp.py`'s `QueryRequest.session_id` already threads a session id through — this
   becomes load-bearing instead of decorative), and AG-UI (multi-turn is inherent to that protocol).
+- The same checkpointer/thread also carries the pre-generation validator loop (see "Rule spec
+  validation" above) — one conversation, one `thread_id`, both loops are just different classification
+  outcomes the supervisor routes on at different points in that same conversation's lifecycle.
 
 **Front-ends**, all over one graph, mirroring `carqna-agent`:
 - **CLI** — replaces `wolfpack_cli.py`.
@@ -209,12 +355,42 @@ the prior turn(s) for that subagent to make a targeted revision rather than rege
 `analyst`/`developer`/`tester` configs) only varies content by *role*. The new supervisor/subagent
 prompts and configs need an *application* dimension too, so a different target application (not just
 `autoins`) can supply its own prompts/config without code changes — treated as another part of the
-same user-curated, per-application knowledge layer described above, not hardcoded in the package.
-Content is net-new either way: the mechanism (file-based prompts, file-based tool config) carries over
+same user-curated, per-application knowledge layer described above, not hardcoded in the package, and
+physically located in that application's `<app>-rulegen/prompts/` (see "Repository layout" above), not
+inside `knowledgexpert` itself. `knowledgexpert` may ship a minimal generic fallback template for
+bootstrapping a brand-new target application, but that's a starting point, not "the" prompts for any
+real application. Content is net-new either way: the mechanism (file-based prompts, file-based tool config) carries over
 conceptually from `raven.py`/`carqna-agent`, but the actual prompt text and MCP tool configs are
 specific to raven's current Q&A/vector-retrieval purpose and don't transfer — every prompt gets
 rewritten for this tool's actual purpose (spec interpretation, rule/config/test generation) and for
 the rules-engine domain.
+
+**Configuration approach — `carqna-agent`'s env-var pattern, not `knowledgexpert`'s current
+config-file/argparse approach.** Verified directly against `carqna-agent/src/agent/graph.py` and
+`auth.py`: plain `os.getenv`/`os.environ` reads (via `python-dotenv`'s `load_dotenv()`), not a
+settings framework, no dedicated config class. Two kinds of env var:
+- **Scalars**, read directly: `LLM_MODEL` (with a sensible default), `POSTGRES_URI` (checkpointer
+  connection string), S3 credentials (`S3_ENDPOINT_URL`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/
+  `S3_REGION`, required with no default — fails loud if missing), and (AG-UI only) the Okta
+  equivalents of carqna's `AUTH0_DOMAIN`/`AUTH0_AUDIENCE` — carqna's own auth module is deliberately
+  generic JWT/JWKS verification, documented there as "Okta/Auth0," so the mechanism already supports
+  Okta as-is; only the env var names and values are `knowledgexpert`'s own, not shared with carqna
+  (per the earlier Okta decision above).
+- **Paths**, pointing at real files/directories rather than embedding their content: carqna's
+  `PROMPTS_DIR` (a directory of markdown prompt files) and `MCP_CONFIG_PATH` (one JSON file) are the
+  precedent. For `knowledgexpert`, one env var — e.g. `RULEGEN_ROOT` — points at the current target
+  application's `<app>-rulegen/` directory (a local path, or an S3-compatible URI when that app's
+  knowledge base is S3-backed), with `knowledge/`, `prompts/`, and `mcp/` derived as fixed subpaths
+  beneath it. This single knob is what "which target application" means at runtime — replacing the
+  `--promptDir`/`--mcpConfig` flag pair with one path that already matches the "Repository layout"
+  folder convention above. `mcp/` simply not existing under that root is how "this application defines
+  no MCP services" (see above) is expressed — no separate flag needed.
+- **Retired**: the current `infrastructure/conf/{expert,raven,wolfpack}/config.json` per-role files and
+  the ~30-flag `raven_cli.py`/`wolfpack_cli.py` argparse surface. Most of that surface is
+  vector-retrieval-specific (`--baseCollections`, `--ensembleWeights`, `--embeddings`,
+  `--vectorDbProvider`, etc.) and already gone once vector retrieval retires (see "Retirement" below);
+  what's left (LLM model, prompt/MCP paths, workspace root) moves to env vars per this section instead
+  of surviving as a smaller argparse surface.
 
 **Tooling** — new `pyproject.toml` + `uv`-managed venv **inside the project** (`.venv` under
 `knowledgexpert/`, per-project like `knowledgenet` and each `knowledgenet-examples` app), replacing
@@ -224,10 +400,11 @@ the rules-engine domain.
 afterthought. Each phase below updates the docs it touches as part of that phase, not deferred to a
 final documentation pass:
 - **New**: a knowledge-base curation guide — how to set up a new target application's virtual
-  filesystem across the six directories (what goes where, with `autoins` as the worked example), how
-  to author a specification template, and conventions for the per-application prompts/config described
-  above. Analogous to `knowledgenet`'s `docs/concepts.md`/`rules-authoring.md` and
-  `knowledgenet-examples/autoins`'s `docs/description.md`/`testing.md`.
+  filesystem across the seven directories (what goes where, with `autoins` as the worked example), how
+  to author a specification template and its sufficiency criteria in `specification-guidelines/`, and
+  conventions for the per-application prompts/config described above. Analogous to `knowledgenet`'s
+  `docs/concepts.md`/`rules-authoring.md` and `knowledgenet-examples/autoins`'s
+  `docs/description.md`/`testing.md`.
 - **New**: a `docs/readme-development.md`-equivalent for `knowledgexpert` itself (dev setup, running
   tests, running the CLI/MCP/AG-UI front-ends), matching the pattern `knowledgenet` and `carqna-agent`
   already use, once the `uv` tooling phase lands.
@@ -246,8 +423,18 @@ aren't gated on cleaning it up:
   `wolfpack_mcp.py`, `copilot_api.py`
 - `vector_store.py`, `vector_query.py`, `graph_store.py`, `vector_backend.py`, `chunker.py`,
   `html_splitter.py`
-- OpenSearch/ChromaDB/Neo4j infra: `infrastructure/conf/{expert,raven,wolfpack}/`,
-  `infrastructure/docker/opensearch-mcp/`, `data/opensearch/`, `infrastructure/admin/opensearch/`
+- ChromaDB and Neo4j entirely (both only ever served the old doc-retrieval mechanism, which has no
+  successor role): `infrastructure/conf/{expert,raven,wolfpack}/` (the raven/wolfpack per-role configs'
+  `baseCollections`/`ensembleWeights`/`embeddings`/vector-db-connection fields specifically — not
+  necessarily the whole file, since `promptDir`/MCP-config fields may still be relevant), the ChromaDB
+  and Neo4j pieces of `infrastructure/docker/docker-compose.yml`.
+- **Not retired, but relocated**: `infrastructure/docker/opensearch-mcp/`, `infrastructure/admin/opensearch/`,
+  `infrastructure/conf/mcp/opensearch/`, `data/opensearch/` — OpenSearch carries forward as an
+  MCP-exposed tool, per "MCP services — live application data" above, but per "Repository layout" above it moves
+  to `knowledgenet-examples/autoins-rulegen/{mcp/,infra/}` rather than staying under `knowledgexpert/`
+  — it's infrastructure serving `autoins`'s data specifically, not generic tool infra. Only its *use for
+  doc/rule ensemble retrieval* (the `rules_collection`/`app_docs_collection`/`framework_docs_collection`
+  mechanism) is retired; the OpenSearch service and its MCP registration itself just move, not retire.
 - `linux_exec_mcp.py` and `infrastructure/docker/linux-exec-mcp/` (the `ShellCommandExecutor` MCP
   service) — retired outright, not repurposed. Replaced by the DeepAgents virtual filesystem for the
   knowledge-base/workspace access it used to help provide indirectly; it is **not** replaced by an
@@ -262,8 +449,43 @@ aren't gated on cleaning it up:
   framework may use a different tool entirely, so this needs its own design (likely a pluggable,
   per-application "how to run tests" concept) rather than hardcoding a pytest-exec tool now.
   `linux_exec_mcp.py` is retired, not repurposed for this — see Retirement above.
+- **Standalone interactive spec-authoring wizard** (drafting a spec from scratch through conversation,
+  rather than validating one already supplied) — a plausible future extension of the rule-spec-validator
+  loop (see "Rule spec validation" above), but not scoped or built now. The validate/clarify/re-validate
+  loop itself *is* in scope; a dedicated from-scratch drafting experience is not.
 - Anything in the two now-retired plans (see `.plans/` — superseded, not part of this plan's scope):
   `plan-opensearch-chromadb-dual-backend-RETIRED.md`, `plan-replace-neo4j-with-arcadedb-RETIRED.md`.
+
+## Testing approach (phases 2-5, via CLI)
+
+The tool's job ends at generating artifacts — rule code, config, tests. Execution of those artifacts
+(running `pytest`, `mypy`, or anything else) and the resulting feedback is the HITL's responsibility,
+always — not just at runtime for the deployed agent (already established via "Test tool integration,"
+out of scope above), but **also true of how we verify the platform itself while building it**. We do
+not build a parallel test-execution harness in our own dev/CI workflow to check generated output either
+— that would just relocate the same execution responsibility from the agent to us, not actually respect
+the boundary. So testing phases 2-5 is **structural/output-shape verification only, never execution**:
+
+- **Golden fixtures, curated in phase 1**: alongside the reference knowledge base for `autoins`, curate
+  2-3 real `autoins` rules with hand-written specs (a mix of clearly-sufficient, sufficient-with-a-
+  stated-assumption, and clearly-insufficient) plus their known-good code/config/test artifacts pulled
+  from the actual app. Reused by every phase below rather than improvised per phase.
+- **Phase 2 (supervisor + rule-spec-validator)** — run the CLI against each golden spec and assert on
+  the validator's structured output (`sufficient`/`assumptions`/`gaps`) and the supervisor's routing
+  decision. Fully automatable: the output is structured data, not generated code, so no execution is
+  ever involved here regardless.
+- **Phases 3-5 (code/config/test-generator)** — run the CLI against a validated golden spec, pointed at
+  a disposable scratch workspace, and assert purely on shape: the right files exist at the right paths;
+  rule code parses as valid Python and contains the expected `@ruledef` structure (a syntax/parse check,
+  not running it); `rule-config.json` stays valid JSON with the new entry merged, not clobbered; the
+  four test artifacts (`autoins`'s convention) exist and are well-formed EDI/CSV/JSON. All static checks
+  on the artifacts as text/data.
+- **Whether generated output is actually *correct*** (the rule computes the right thing, the test
+  actually passes) is never something this test approach — or the platform — determines. That's a human
+  call: someone runs the CLI, then separately and manually runs whatever verification they choose
+  (`pytest`, reading the code, anything), and if something's wrong, reports it back in the same
+  conversation. That's just dogfooding the post-generation feedback loop already in scope, not a
+  separate test harness.
 
 ## Open questions
 
@@ -276,35 +498,47 @@ None outstanding — everything raised during design discussion has been resolve
 1. Knowledge-base backend + content: both `FilesystemBackend` and RustFS-compatible `S3Backend` wired
    together in this single phase (not staged local-first) — `carqna-agent`'s `S3Backend` is already
    well-tested and reusable as-is, so there's no reason to defer it behind a separate later phase.
-   Includes curating foundational/app-specific/exemplar/test-framework content for `autoins` as the
-   reference application.
-   *Docs*: new knowledge-base curation guide (the six directories, worked `autoins` example).
-2. Supervisor + code-generator subagent (spec interpretation, classification, code generation, CLI
-   front-end only) — smallest end-to-end slice, no config/test generation yet. First use of the
-   `CompositeBackend`-mounted workspace (`write` for new rule code files).
-   *Docs*: new spec-template authoring guide; `README.md` CLI section rewritten to the new command.
-3. config-generator subagent — first consumer of the workspace's `edit` (and `read`) capability, since
+   Includes creating `knowledgenet-examples/autoins-rulegen/` (see "Repository layout" above) and
+   curating foundational/app-specific/exemplar/test-framework/specification content, prompts, and (if
+   applicable) MCP config + live-data infra there for `autoins` as the reference application, plus
+   migrating the existing OpenSearch infra out of `knowledgexpert/infrastructure/` into
+   `autoins-rulegen/{mcp/,infra/}`, **plus the golden fixture set** (see "Testing approach" below) that
+   phases 2-5 reuse for CLI verification.
+   *Docs*: new knowledge-base curation guide (the seven directories plus prompts/mcp/infra, worked
+   `autoins` example).
+2. Supervisor + rule-spec-validator subagent (spec interpretation, classification, and the
+   validate/clarify/re-validate loop against `specification-guidelines/`) — CLI front-end only, no
+   generation yet. Deliberately built before any generator subagent: nothing should be able to generate
+   against an unvalidated spec, so the gate has to exist first, not be retrofitted later.
+   *Docs*: new spec-template authoring guide, including how to write sufficiency criteria.
+3. code-generator subagent — first actual generation, gated by the validator from phase 2. First use of
+   the `CompositeBackend`-mounted workspace (`write` for new rule code files).
+   *Docs*: `README.md` CLI section rewritten to the new command.
+4. config-generator subagent — first consumer of the workspace's `edit` (and `read`) capability, since
    `rule-config.json` must be merged into, not overwritten.
    *Docs*: knowledge-base curation guide gains `configuration-guidelines/` conventions.
-4. test-generator subagent (artifact authoring only — no test-tool execution; see "Test tool
+5. test-generator subagent (artifact authoring only — no test-tool execution; see "Test tool
    integration," out of scope).
    *Docs*: knowledge-base curation guide gains `testing-guidelines/` conventions.
-5. Conversational memory / iterative feedback: Postgres-backed checkpointer (own database, per-instance
-   configurable — see above), supervisor logic to recognize and route feedback on prior artifacts to
-   the subagent that produced them, revised prompts covering generate-fresh vs. revise-existing. The
-   `CompositeBackend`-based live workspace access (see "Workspace" above) already exists from phases
-   2-4 — this phase is about the supervisor's routing/state logic, not new backend plumbing.
+6. Conversational memory / iterative feedback (post-generation loop): Postgres-backed checkpointer (own
+   database, per-instance configurable — see above), supervisor logic to recognize and route feedback on
+   prior artifacts to the subagent that produced them, revised prompts covering generate-fresh vs.
+   revise-existing. The `CompositeBackend`-based live workspace access (see "Workspace" above) already
+   exists from phases 3-5 — this phase is about the supervisor's routing/state logic, not new backend
+   plumbing. Reuses the same checkpointer wiring the phase-2 validator loop already established.
    CLI front-end only at this point.
    *Docs*: `README.md`/CLI docs gain the feedback/revision workflow (how to report an issue in the
    same session so the right subagent picks it up).
-6. MCP front-end: `/workspace/` route swapped to `StateBackend`, structured response extraction.
+7. MCP front-end: `/workspace/` route swapped to `StateBackend`, structured response extraction.
    *Docs*: `README.md` MCP section rewritten to the new server.
-7. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config),
+8. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config),
    including per-user workspace `root_dir` derivation from the authenticated identity (see multi-user
    isolation notes under "Workspace" above — this is the critical piece to get right, not optional).
    *Docs*: `README.md` gains AG-UI/Okta setup; `CLAUDE.md` updated to describe the now-complete new
    architecture instead of "migration in progress."
-8. Retirement of legacy modules/infra listed above.
-   *Docs*: `README.md` stripped of every legacy-stack section (pip setup, Docker OpenSearch/Neo4j
-   infra, vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`/`copilot_api` commands)
-   in the same phase the code they describe is deleted, not left dangling.
+9. Retirement of legacy modules/infra listed above (ChromaDB/Neo4j fully; OpenSearch's doc-retrieval
+   *use* only — its MCP infra stays, see "Retirement" above).
+   *Docs*: `README.md` stripped of every legacy-stack section (pip setup, Docker ChromaDB/Neo4j
+   infra, vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`/`copilot_api` commands),
+   while gaining an OpenSearch-as-MCP-tool section (how to define an application's collections) if it
+   didn't already land in an earlier phase.
