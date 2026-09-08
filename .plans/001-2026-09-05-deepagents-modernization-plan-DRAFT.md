@@ -164,24 +164,38 @@ further verification needed.
 **What's mounted at `/workspace/` is the only thing that varies by mode** — the subagent's tool calls
 are identical either way:
 - **CLI** — `FilesystemBackend` rooted at a local directory the user points the tool at via a
-  `WORKSPACE_ROOT` env var (see "Configuration approach" below; they manage git themselves). Writes/edits
-  land on disk immediately. Always local, regardless of what the knowledge-base backend for this run is
-  (local or S3/RustFS) — the two are independent choices. No authentication — the CLI runs as whatever
-  local user invoked it, same as `wolfpack_cli.py` today.
-- **AG-UI** — `FilesystemBackend`/`S3Backend` rooted at a per-user, pre-provisioned network-filesystem
-  path. Git lifecycle (clone/pull/push) is **out of scope** — assume the workspace already exists.
+  `WORKSPACE_ROOT` env var (see "Configuration approach" below; they manage git themselves — in
+  practice, one branch/worktree per thing they're working on, `WORKSPACE_ROOT` pointed at whichever
+  checkout is currently active; the CLI's local session name is just a conversational label, it doesn't
+  drive which directory gets used). Writes/edits land on disk immediately. Always local, regardless of
+  what the knowledge-base backend for this run is (local or S3/RustFS) — the two are independent
+  choices. No authentication — the CLI runs as whatever local user invoked it, same as `wolfpack_cli.py`
+  today.
+- **AG-UI** — `FilesystemBackend`/`S3Backend` rooted at a per-user-per-**session**, pre-provisioned
+  network-filesystem path. **Git lifecycle (clone/pull/push/branch/worktree) is out of scope, at session
+  granularity**: each session corresponds to its own git branch — in practice a `git worktree` so
+  multiple sessions' checkouts can coexist and be mounted concurrently — and the human creates that
+  worktree/branch themselves, matching the session name they picked when creating the session (see
+  "Session picker" below). The tool never clones, branches, or switches anything; it only assumes the
+  per-session directory already exists by the time that session is used, the same "assume it already
+  exists" contract the per-user case already had, just one level more specific now that sessions exist.
   **Multi-user isolation, resolved**: `FilesystemBackend(root_dir=..., virtual_mode=True)` (the
   default) treats every agent-facing path as virtual and anchored to `root_dir` — `..`/`~` traversal is
   blocked, virtual "absolute" paths are remapped under `root_dir` rather than escaping it, and every
   resolved path is verified to stay within `root_dir` before any I/O — enforced in `_resolve_path()`
   itself, not something a prompt or a confused agent can talk its way around. So the isolation is
-  entirely a function of **backend construction**: each authenticated user's session must get its own
-  freshly-built `FilesystemBackend` with `root_dir` set to *that specific user's own workspace leaf
-  directory*, derived server-side from the Okta-authenticated identity (`auth_context`, mirroring
-  `carqna-agent`) — **never** from anything client-supplied. **The mistake to avoid**: rooting the
+  entirely a function of **backend construction**: each session must get its own freshly-built
+  `FilesystemBackend` with `root_dir` set to *that specific session's own workspace leaf directory* —
+  `/workspace/<user>/<session>/`, not just `/workspace/<user>/` (see "Session picker" under
+  "Conversational memory" below: a user may run several rule-gen requests concurrently, and their
+  generated artifacts must not collide). The user segment is derived server-side from the
+  Okta-authenticated identity (`auth_context`, mirroring `carqna-agent`); the session segment is the
+  verified session id from that same user's `user_sessions` row — **never** from anything
+  client-supplied. **The mistake to avoid**: rooting the
   backend at a *shared parent* directory (e.g. `/mnt/nfs/workspaces/`) and trusting the agent to "stay
   in its own subdirectory" — `virtual_mode`'s guardrails only block escaping `root_dir`, not what's
-  reachable *inside* it, and every other user's directory would be legitimately inside a shared root.
+  reachable *inside* it, and every other user's (or that same user's other session's) directory would be
+  legitimately inside a shared root.
   **Caveat to carry forward, not paper over**: `FilesystemBackend`'s own docstring lists "web servers or
   HTTP APIs" (i.e. AG-UI) as an *inappropriate* use case, since path-based guardrails aren't real
   sandboxing/process isolation, and recommends `StateBackend`/`StoreBackend`/`SandboxBackend` instead.
@@ -356,6 +370,41 @@ the prior turn(s) for that subagent to make a targeted revision rather than rege
   validation" above) — one conversation, one `thread_id`, both loops are just different classification
   outcomes the supervisor routes on at different points in that same conversation's lifecycle.
 
+**Session picker (AG-UI only)** — a user may be working on several rule-generation requests
+concurrently (e.g. two different rules, or a fresh spec alongside revising an earlier one), and their
+conversational memory (and, per "Workspace" above, their generated artifacts) must not bleed together.
+This means AG-UI's checkpoint thread is keyed by **session**, not just by user — `carqna-agent` already
+solves exactly this (its "multi-session picker" feature) and the mechanism is directly reusable, not
+something to design from scratch:
+- **Schema** (Postgres, same database as the checkpointer): a `user_registry` table (maps the opaque
+  Okta `sub` claim to a human-readable email/name, populated lazily via the OIDC `/userinfo` endpoint
+  on first sight of a user — see `carqna-agent/src/agent/user_tracking.py`) and a `user_sessions` table
+  (named sessions per user, `UNIQUE (user_registry_id, session_name)` — see
+  `infrastructure/docker/postgres/initdb.d/users_registry.sh`/`users_sessions.sh`). Copy both tables'
+  DDL and both Python modules near-verbatim, `carqna`/Auth0 naming aside.
+- **Thread key**: `{user_id}:{session_id}`, built server-side from the verified identity and a
+  session id the client only ever selects from its own `GET /sessions` list — never trusted raw (see
+  `copilotkit_server.py`'s `langgraph_agent_endpoint`, same "never trust a client-supplied user id"
+  principle already established for workspace `root_dir`).
+- **Endpoints**: `GET /sessions` (list the caller's own sessions, most-recently-accessed first) and
+  `POST /sessions` (create a new one) — copy `carqna-agent`'s `list_sessions`/`create_session`/
+  `touch_session` (`sessions.py`) and their two route handlers directly; `track_user` (`user_tracking.py`)
+  runs on every authenticated request the same way, never blocking the actual chat/generation path on a
+  `/userinfo` hiccup.
+- **Workspace tie-in**: each session's checkpoint thread and its workspace `root_dir` leaf both derive
+  from the same `(user_id, session_name)` pair (see "Workspace" above) — one session picker selection
+  determines both which conversation history and which generated-artifacts directory (in practice, which
+  git branch/worktree) a turn operates against. The session name doubles as the expected directory-leaf
+  convention; the human, not the tool, is responsible for the worktree at that path actually existing
+  and being checked out to the matching branch before the session is used (see "Git lifecycle" under
+  "Workspace" above) — no extra schema or provisioning logic beyond the `user_sessions` row itself.
+- **Not needed elsewhere**: CLI already gets an equivalent of this for free — `carqna_cli.py`'s local
+  `sessions` table (find-or-create by `--session <name>`, no `user_id` since the SQLite file itself is
+  already scoped to one local user) is part of the CLI reuse already planned above, no separate design
+  needed. MCP has no authenticated identity (see "Auth" — AG-UI-only) and no picker UI; its existing
+  `QueryRequest.session_id` (client-supplied, used directly as the thread id, no `user_registry` join)
+  is a different, simpler mechanism and stays that way.
+
 **Front-ends**, all over one graph, mirroring `carqna-agent`:
 - **CLI** — replaces `wolfpack_cli.py`.
 - **MCP server** — replaces `wolfpack_mcp.py` (FastMCP); no persistent workspace — `/workspace/` is a
@@ -505,7 +554,9 @@ aren't gated on cleaning it up:
 
 ### Explicitly out of scope
 
-- Git lifecycle management (clone/pull/push) for AG-UI workspaces — assumed pre-provisioned.
+- Git lifecycle management (clone/pull/push/branch/worktree) for AG-UI workspaces — assumed
+  pre-provisioned per session (one worktree/branch per session, matching the session name), by the human,
+  not the tool. See "Workspace" and "Session picker" above.
 - **Test tool integration** — actually running the target application's test tool (running the
   generated tests, inspecting output, generating/verifying `expected.csv`-equivalent results) is out
   of scope for now. Deliberately deferred rather than assumed to be pytest: the application's test
@@ -600,11 +651,15 @@ None outstanding — everything raised during design discussion has been resolve
    *Docs*: `README.md` MCP section rewritten to the new server.
 8. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config,
    Postgres checkpointer setup mirroring `copilotkit_server.py`'s `lifespan()` — explicit
-   `await checkpointer.setup()` on startup),
-   including per-user workspace `root_dir` derivation from the authenticated identity (see multi-user
+   `await checkpointer.setup()` on startup), **plus the session picker**: `user_registry`/`user_sessions`
+   tables and init scripts, `GET`/`POST /sessions` endpoints, composite `{user_id}:{session_id}` thread
+   keys — ported from `carqna-agent`'s `sessions.py`/`user_tracking.py` near-verbatim (see "Session
+   picker" under "Conversational memory" above). Includes per-**session** (not just per-user) workspace
+   `root_dir` derivation from the authenticated identity plus the picked session (see multi-user
    isolation notes under "Workspace" above — this is the critical piece to get right, not optional).
-   *Docs*: `README.md` gains AG-UI/Okta setup; `CLAUDE.md` updated to describe the now-complete new
-   architecture instead of "migration in progress."
+   *Docs*: `README.md` gains AG-UI/Okta/session-picker setup, including the human-managed
+   worktree-per-session convention; `CLAUDE.md` updated to describe the now-complete new architecture
+   instead of "migration in progress."
 9. Retirement of legacy modules/infra listed above (ChromaDB/Neo4j fully; OpenSearch's doc-retrieval
    *use* only — its MCP infra stays, see "Retirement" above).
    *Docs*: `README.md` stripped of every legacy-stack section (pip setup, Docker ChromaDB/Neo4j
