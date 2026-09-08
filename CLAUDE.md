@@ -18,7 +18,13 @@ below before assuming any given module is still live.
 ## Current status: migration in progress
 
 **Read [`.plans/001-2026-09-05-deepagents-modernization-plan-DRAFT.md`](.plans/001-2026-09-05-deepagents-modernization-plan-DRAFT.md)
-first.** It is the authoritative description of where this project is going and why. The summary:
+first.** It is the authoritative description of the whole target architecture and why — including the
+parts (MCP/AG-UI/session-picker/observability) that aren't in its own phase list. That plan covers
+**phases 0-7 only** (tooling through retiring the legacy stack, CLI-only); a second plan,
+[`002-2026-09-07-deepagents-multitenant-frontends-plan-DRAFT.md`](.plans/002-2026-09-07-deepagents-multitenant-frontends-plan-DRAFT.md),
+covers phases 8-10 (MCP, AG-UI+Okta+session-picker, observability) — genuinely new functionality, not
+started, and deliberately gated on 001 being done *and validated on real generated rules*, not just
+"phases finished." See 001's "Plan split" section for the reasoning. The summary below:
 
 - **Legacy stack (currently what actually runs)**: `expert.py` (already deprecated in its own
   docstring), `raven.py` (a `langchain.agents.create_agent` ReAct-style agent with MCP tools and a

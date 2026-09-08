@@ -3,6 +3,23 @@
 Status: **DRAFT (2026-09-05)** — architecture agreed via discussion; implementation has **not**
 started. Further design conversation is expected before this moves to `-INPROG`.
 
+## Plan split
+
+This plan covers **phases 0-7 only**: tooling, the filesystem-backed knowledge base, the
+supervisor/rule-spec-validator/three-generator-subagent graph, the CLI's conversational-memory feedback
+loop, and retirement of the legacy stack. That's the whole architecture design below (it was designed
+as one coherent system and isn't duplicated), but the **phase list at the bottom stops at phase 7**.
+
+Phases 8-10 — MCP front-end, AG-UI + Okta + session picker, and observability/OTel — are **new
+functionality this tool doesn't have today**, as opposed to phases 0-7, which replace `wolfpack`'s
+existing CLI-driven generation with a better architecture. They're deliberately deferred to a follow-on
+plan (`002-...-plan.md`, not started) rather than committed to now, because they build genuine
+multi-tenant infrastructure (auth, per-session Postgres state, OTel) on top of a generation-quality
+question — does an agent browsing a curated filesystem KB, gated by the spec validator, actually
+produce rule artifacts a human is happy with? — that hasn't been validated on real `autoins` rules yet.
+Plan 002 references this plan for architecture rather than repeating it; start it only after phases 0-7
+here are done and validated on real rules, not automatically.
+
 ## Objective
 
 Retire the LangChain-classic / vector-store generation of `knowledgexpert` (`expert.py`, `raven.py`,
@@ -485,7 +502,7 @@ extra dependency or code beyond what's already needed for the checkpointer/LLM p
   no code of their own — but that's deliberately deferred to its own last phase (see Phases below)
   rather than added incrementally alongside each earlier phase.
 - **AG-UI-specific addition** (part of that same last phase, mirroring `copilotkit_server.py` exactly,
-  applicable once AG-UI itself exists from phase 8): an early, explicit `langsmith.Client()`
+  applicable once AG-UI itself exists from phase 9): an early, explicit `langsmith.Client()`
   construction in the FastAPI `lifespan`, before any real request, so `langsmith` registers its OTel
   `TracerProvider` as the process-global one before `FastAPIInstrumentor.instrument_app(app)`'s
   HTTP-level spans need to nest under it — plus `FastAPIInstrumentor.instrument_app(app)` itself,
@@ -502,8 +519,8 @@ extra dependency or code beyond what's already needed for the checkpointer/LLM p
   This is tool-level observability infra, not application data, so it stays in `knowledgexpert/` per
   "Repository layout" above — not something that moves to `<app>-rulegen/`.
 - **Dependencies**: `opentelemetry-exporter-otlp`, `opentelemetry-sdk`,
-  `opentelemetry-instrumentation-fastapi` (the last one only actually exercised once AG-UI/phase 8
-  lands, but harmless to add to `pyproject.toml` alongside the others in phase 0).
+  `opentelemetry-instrumentation-fastapi` — all three added in phase 10 itself (plan 002), not phase 0;
+  the last one only actually gets exercised once AG-UI/phase 9 lands.
 
 **Tooling** — new `pyproject.toml` + `uv`-managed venv **inside the project** (`.venv` under
 `knowledgexpert/`, per-project like `knowledgenet` and each `knowledgenet-examples` app), replacing
@@ -646,33 +663,21 @@ None outstanding — everything raised during design discussion has been resolve
    "Workspace" above) already exists from phases 3-5 — this phase is about the supervisor's
    routing/state logic, not new backend plumbing. Reuses the same checkpointer wiring the phase-2
    validator loop already established. CLI front-end only at this point, so only the SQLite path is
-   exercised here — Postgres wiring for MCP/AG-UI lands with those front-ends (phases 7-8).
+   exercised here — Postgres wiring for MCP/AG-UI lands with those front-ends (phases 8-9, plan 002).
    *Docs*: `README.md`/CLI docs gain the feedback/revision workflow (how to report an issue in the
    same session so the right subagent picks it up).
-7. MCP front-end: `/workspace/` route swapped to `StateBackend`, structured response extraction,
-   Postgres checkpointer wired in (see "Conversational memory" above — same instance/database AG-UI
-   will use in phase 8).
-   *Docs*: `README.md` MCP section rewritten to the new server.
-8. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config,
-   Postgres checkpointer setup mirroring `copilotkit_server.py`'s `lifespan()` — explicit
-   `await checkpointer.setup()` on startup), **plus the session picker**: `user_registry`/`user_sessions`
-   tables and init scripts, `GET`/`POST /sessions` endpoints, composite `{user_id}:{session_id}` thread
-   keys — ported from `carqna-agent`'s `sessions.py`/`user_tracking.py` near-verbatim (see "Session
-   picker" under "Conversational memory" above). Includes per-**session** (not just per-user) workspace
-   `root_dir` derivation from the authenticated identity plus the picked session (see multi-user
-   isolation notes under "Workspace" above — this is the critical piece to get right, not optional).
-   *Docs*: `README.md` gains AG-UI/Okta/session-picker setup, including the human-managed
-   worktree-per-session convention; `CLAUDE.md` updated to describe the now-complete new architecture
-   instead of "migration in progress."
-9. Retirement of legacy modules/infra listed above (ChromaDB/Neo4j fully; OpenSearch's doc-retrieval
-   *use* only — its MCP infra stays, see "Retirement" above).
+7. Retirement of legacy modules/infra listed above (ChromaDB/Neo4j fully; OpenSearch's doc-retrieval
+   *use* only — its MCP infra stays, see "Retirement" above) — including `wolfpack_mcp.py` and
+   `copilot_api.py` outright, even though their DeepAgents replacements don't exist yet (see "Plan
+   split" below: phases 0-7 replace what the tool already does today; MCP/AG-UI as built here were
+   never more than a crude reference implementation of that same CLI-era functionality, not something
+   worth keeping alive as a bridge).
    *Docs*: `README.md` stripped of every legacy-stack section (pip setup, Docker ChromaDB/Neo4j
    infra, vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`/`copilot_api` commands),
-   while gaining an OpenSearch-as-MCP-tool section (how to define an application's collections) if it
-   didn't already land in an earlier phase.
-10. Observability (see "Observability" above) — deliberately last, once the rest of the platform is
-    functionally complete: OTel dependencies, the `jaeger` docker-compose service, env-var-only
-    LangChain/LangGraph tracing (covers CLI and MCP retroactively, no code needed), and the AG-UI-only
-    `FastAPIInstrumentor`/early-`langsmith.Client()` wiring (mirroring `copilotkit_server.py`'s exact
-    ordering).
-    *Docs*: `README.md`/dev-setup doc gain the OTel env vars and the `4318`/`/v1/traces` gotcha.
+   gaining an OpenSearch-as-MCP-tool section (how to define an application's collections). CLI is the
+   only documented front-end until plan 002 (see below) lands MCP/AG-UI again, as new functionality.
+
+**End of this plan's scope.** Phases 8-10 (MCP front-end, AG-UI + Okta + session picker, observability)
+are **new functionality this tool doesn't have today** — as opposed to phases 0-7, which replace
+existing functionality (`wolfpack`'s CLI-driven generation) with a better architecture. See "Plan
+split" below.
