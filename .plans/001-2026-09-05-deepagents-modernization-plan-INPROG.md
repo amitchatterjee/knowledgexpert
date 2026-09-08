@@ -423,15 +423,20 @@ something to design from scratch:
   convention; the human, not the tool, is responsible for the worktree at that path actually existing
   and being checked out to the matching branch before the session is used (see "Git lifecycle" under
   "Workspace" above) — no extra schema or provisioning logic beyond the `user_sessions` row itself.
-- **Not needed elsewhere**: CLI already gets an equivalent of this for free — `carqna_cli.py`'s local
-  `sessions` table (find-or-create by `--session <name>`, no `user_id` since the SQLite file itself is
-  already scoped to one local user) lives in **the same SQLite file, over the same connection, as the
-  CLI checkpointer itself** (`_get_or_create_session(checkpointer.conn, args.session)` — one file, one
-  `AsyncSqliteSaver`, not a separate database for sessions vs. conversation state the way AG-UI needs
-  two Postgres tables alongside its checkpointer). This is part of the CLI reuse already planned above
-  (see "Conversational memory — Technology" above), no separate design needed. MCP has no authenticated
-  identity (see "Auth" — AG-UI-only) and no picker UI; its existing `QueryRequest.session_id`
-  (client-supplied, used directly as the thread id, no `user_registry` join) is a different, simpler
+- **CLI's equivalent is a `--session` flag, not a picker** — a real deliverable of phase 6 below, not
+  passive reuse commentary: a CLI user may work on several rule-gen requests concurrently too (multiple
+  terminals/directories, one `--session <name>` each), same underlying need as AG-UI's picker, met by a
+  different mechanism since there's no UI to pick from and no authenticated identity to scope by.
+  Mirrors `carqna_cli.py`'s local `sessions` table (find-or-create by `--session <name>`, no `user_id`
+  since the SQLite file itself is already scoped to one local user), which lives in **the same SQLite
+  file, over the same connection, as the CLI checkpointer itself**
+  (`_get_or_create_session(checkpointer.conn, args.session)` — one file, one `AsyncSqliteSaver`, not a
+  separate database for sessions vs. conversation state the way AG-UI needs two Postgres tables
+  alongside its checkpointer). This is part of the CLI reuse already planned above (see "Conversational
+  memory — Technology" above); phase 6 is where it actually gets built (see the phase list below). MCP
+  has no authenticated identity (see "Auth" — AG-UI-only) and no picker UI; its existing
+  `QueryRequest.session_id` (client-supplied, used directly as the thread id, no `user_registry` join)
+  is a different, simpler
   mechanism and stays that way.
 
 **Front-ends**, all over one graph, mirroring `carqna-agent`:
@@ -690,7 +695,11 @@ None outstanding — everything raised during design discussion has been resolve
    *Docs*: knowledge-base curation guide gains `testing-guidelines/` conventions.
 6. Conversational memory / iterative feedback (post-generation loop): checkpointer wiring — SQLite for
    the CLI (own local file, no setup/migration needed), Postgres for MCP/AG-UI (own database,
-   per-instance configurable) — see "Conversational memory" above. Supervisor logic to recognize and
+   per-instance configurable) — see "Conversational memory" above. **CLI gains a `--session <name>`
+   flag** (find-or-create against the local `sessions` table sharing the checkpointer's SQLite
+   connection, mirroring `carqna_cli.py`) so one CLI user can work multiple concurrent rule-gen requests
+   without their conversational memory bleeding together — the CLI counterpart to AG-UI's session
+   picker (see "Session picker" above), not the same mechanism. Supervisor logic to recognize and
    route feedback on prior artifacts to the subagent that produced them, revised prompts covering
    generate-fresh vs. revise-existing. The `CompositeBackend`-based live workspace access (see
    "Workspace" above) already exists from phases 3-5 — this phase is about the supervisor's
