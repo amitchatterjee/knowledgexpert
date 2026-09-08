@@ -20,7 +20,8 @@ below before assuming any given module is still live.
 **Read [`.plans/001-2026-09-05-deepagents-modernization-plan-DRAFT.md`](.plans/001-2026-09-05-deepagents-modernization-plan-DRAFT.md)
 first.** It is the authoritative description of the whole target architecture and why — including the
 parts (MCP/AG-UI/session-picker/observability) that aren't in its own phase list. That plan covers
-**phases 0-7 only** (tooling through retiring the legacy stack, CLI-only); a second plan,
+**phases 0-6 only** (retiring the legacy stack upfront as a clean-slate phase 0, then tooling and the
+CLI-only generation graph); a second plan,
 [`002-2026-09-07-deepagents-multitenant-frontends-plan-DRAFT.md`](.plans/002-2026-09-07-deepagents-multitenant-frontends-plan-DRAFT.md),
 covers phases 8-10 (MCP, AG-UI+Okta+session-picker, observability) — genuinely new functionality, not
 started, and deliberately gated on 001 being done *and validated on real generated rules*, not just

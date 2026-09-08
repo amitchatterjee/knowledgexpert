@@ -5,20 +5,23 @@ started. Further design conversation is expected before this moves to `-INPROG`.
 
 ## Plan split
 
-This plan covers **phases 0-7 only**: tooling, the filesystem-backed knowledge base, the
-supervisor/rule-spec-validator/three-generator-subagent graph, the CLI's conversational-memory feedback
-loop, and retirement of the legacy stack. That's the whole architecture design below (it was designed
-as one coherent system and isn't duplicated), but the **phase list at the bottom stops at phase 7**.
+This plan covers **phases 0-6 only**: retiring the legacy stack upfront as a clean-slate first step,
+tooling, the filesystem-backed knowledge base, the supervisor/rule-spec-validator/three-generator-subagent
+graph, and the CLI's conversational-memory feedback loop. That's the whole architecture design below
+(it was designed as one coherent system and isn't duplicated), but the **phase list at the bottom stops
+at phase 6**.
 
 Phases 8-10 — MCP front-end, AG-UI + Okta + session picker, and observability/OTel — are **new
-functionality this tool doesn't have today**, as opposed to phases 0-7, which replace `wolfpack`'s
-existing CLI-driven generation with a better architecture. They're deliberately deferred to a follow-on
-plan (`002-...-plan.md`, not started) rather than committed to now, because they build genuine
-multi-tenant infrastructure (auth, per-session Postgres state, OTel) on top of a generation-quality
-question — does an agent browsing a curated filesystem KB, gated by the spec validator, actually
-produce rule artifacts a human is happy with? — that hasn't been validated on real `autoins` rules yet.
-Plan 002 references this plan for architecture rather than repeating it; start it only after phases 0-7
-here are done and validated on real rules, not automatically.
+functionality this tool doesn't have today**, as opposed to phases 0-6, which replace `wolfpack`'s
+existing CLI-driven generation with a better architecture. (There's a deliberate gap at phase 7 — no
+phase 7 exists in either plan; see "Retirement" below for why it moved into phase 0 instead, and 002 for
+why its own phases keep the original 8-10 numbering rather than closing the gap.) They're deliberately
+deferred to a follow-on plan (`002-...-plan.md`, not started) rather than committed to now, because they
+build genuine multi-tenant infrastructure (auth, per-session Postgres state, OTel) on top of a
+generation-quality question — does an agent browsing a curated filesystem KB, gated by the spec
+validator, actually produce rule artifacts a human is happy with? — that hasn't been validated on real
+`autoins` rules yet. Plan 002 references this plan for architecture rather than repeating it; start it
+only after phases 0-6 here are done and validated on real rules, not automatically.
 
 ## Objective
 
@@ -543,15 +546,25 @@ final documentation pass:
   already use, once the `uv` tooling phase lands.
 - **Refactor**: `README.md` is currently written entirely around the legacy stack (pip setup, Docker
   OpenSearch/Neo4j infra, vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`
-  commands) — rewritten in step with each phase as the legacy stack it documents is replaced, not left
-  stale until final retirement.
+  commands) — every legacy-stack section stripped upfront in phase 0, alongside the code itself (see
+  "Retirement" below), then rebuilt incrementally as each phase lands its replacement. A brief interim
+  state (no CLI documented at all, between phase 0 and phase 3's first working command) is expected and
+  fine — there's no reader depending on `README.md` being complete mid-migration on a branch nothing
+  else consumes yet.
 - **Refactor**: `CLAUDE.md` (added this session, describing the current legacy-stack/migration-in-progress
   state) updated as each phase changes what's actually true — it should never describe code that no
   longer exists or omit code that now does.
 
-**Retirement**, once the DeepAgents version reaches parity. Vector-store retirement specifically is
-low priority and can be deferred — the legacy stack is fine to coexist for a while; earlier phases
-aren't gated on cleaning it up:
+**Retirement — upfront, in phase 0, not deferred until parity.** Reconsidered from an earlier version of
+this plan that deferred retirement until after phases 1-6: this work happens entirely on
+`feature/modernization`, a branch nothing else consumes yet, so "the legacy stack still works" buys
+nothing real — `main` (or wherever this branch diverged from) already has a fully working copy, and
+`git show <commit>:path` recovers any specific file if it's ever needed again, retirement or not. What
+deferred retirement actually costs: `pyproject.toml`/the venv would carry **two** dependency stacks
+side by side through phases 1-6 (legacy `langchain`-classic/ChromaDB/Neo4j plus new
+`deepagents`/`langgraph`), real version-conflict risk for a benefit (a running side-by-side comparison,
+or a fallback if the rewrite stalls) that was never actually exercised by any phase's plan. Clean slate
+before new code, not after:
 - `expert.py`, `expert_cli.py`, `raven.py`, `raven_cli.py`, `wolfpack.py`, `wolfpack_cli.py`,
   `wolfpack_mcp.py`, `copilot_api.py`
 - `vector_store.py`, `vector_query.py`, `graph_store.py`, `vector_backend.py`, `chunker.py`,
@@ -628,8 +641,22 @@ None outstanding — everything raised during design discussion has been resolve
 
 ## Phases (tentative — sketch only, subject to change as implementation surfaces new information)
 
-0. Tooling: `uv`-managed `pyproject.toml`, in-project `.venv`, drop `requirements.txt`/`~/ai-venv`.
-   *Docs*: new `docs/readme-development.md`-equivalent for the `uv` workflow.
+0. **Clean slate**: retirement of the legacy stack (see "Retirement" above) upfront, before any new
+   code is written — `expert*.py`, `raven*.py`, `wolfpack*.py` (including `wolfpack_mcp.py`),
+   `copilot_api.py`, `vector_store.py`/`vector_query.py`/`graph_store.py`/`vector_backend.py`/
+   `chunker.py`/`html_splitter.py`, ChromaDB and Neo4j entirely (infra and per-role `config.json`
+   fields) — `wolfpack_mcp.py`/`copilot_api.py` retired outright even though their DeepAgents
+   replacements don't exist yet (see "Plan split" below: phases 0-6 replace what the tool already does
+   today; MCP/AG-UI as built here were never more than a crude reference implementation of that same
+   CLI-era functionality, not something worth keeping alive as a bridge). OpenSearch's MCP infra is
+   *not* touched here — it's relocated, not retired, as part of phase 1 below. Then, on that clean base:
+   `uv`-managed `pyproject.toml`, in-project `.venv`, drop `requirements.txt`/`~/ai-venv` — a fresh
+   dependency set with no legacy `langchain`-classic/ChromaDB/Neo4j packages ever declared alongside the
+   new `deepagents`/`langgraph` stack.
+   *Docs*: `README.md` stripped of every legacy-stack section (pip setup, Docker ChromaDB/Neo4j infra,
+   vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`/`copilot_api` commands) — no CLI
+   documented at all until phase 3 lands the first working command, which is fine, nothing else consumes
+   this branch yet. New `docs/readme-development.md`-equivalent for the `uv` workflow.
 1. Knowledge-base backend + content: both `FilesystemBackend` and RustFS-compatible `S3Backend` wired
    together in this single phase (not staged local-first) — `carqna-agent`'s `S3Backend` is already
    well-tested and reusable as-is, so there's no reason to defer it behind a separate later phase.
@@ -640,7 +667,8 @@ None outstanding — everything raised during design discussion has been resolve
    `autoins-rulegen/{mcp/,infra/}`, **plus the golden fixture set** (see "Testing approach" below) that
    phases 2-5 reuse for CLI verification.
    *Docs*: new knowledge-base curation guide (the seven directories plus prompts/mcp/infra, worked
-   `autoins` example).
+   `autoins` example), and `README.md` gains an OpenSearch-as-MCP-tool section (how to define an
+   application's collections) covering the infra just relocated here.
 2. Supervisor + rule-spec-validator subagent (spec interpretation, classification, and the
    validate/clarify/re-validate loop against `specification-guidelines/`) — CLI front-end only, no
    generation yet. Deliberately built before any generator subagent: nothing should be able to generate
@@ -666,18 +694,8 @@ None outstanding — everything raised during design discussion has been resolve
    exercised here — Postgres wiring for MCP/AG-UI lands with those front-ends (phases 8-9, plan 002).
    *Docs*: `README.md`/CLI docs gain the feedback/revision workflow (how to report an issue in the
    same session so the right subagent picks it up).
-7. Retirement of legacy modules/infra listed above (ChromaDB/Neo4j fully; OpenSearch's doc-retrieval
-   *use* only — its MCP infra stays, see "Retirement" above) — including `wolfpack_mcp.py` and
-   `copilot_api.py` outright, even though their DeepAgents replacements don't exist yet (see "Plan
-   split" below: phases 0-7 replace what the tool already does today; MCP/AG-UI as built here were
-   never more than a crude reference implementation of that same CLI-era functionality, not something
-   worth keeping alive as a bridge).
-   *Docs*: `README.md` stripped of every legacy-stack section (pip setup, Docker ChromaDB/Neo4j
-   infra, vector/graph data loading, `raven_cli`/`wolfpack_cli`/`wolfpack_mcp`/`copilot_api` commands),
-   gaining an OpenSearch-as-MCP-tool section (how to define an application's collections). CLI is the
-   only documented front-end until plan 002 (see below) lands MCP/AG-UI again, as new functionality.
 
 **End of this plan's scope.** Phases 8-10 (MCP front-end, AG-UI + Okta + session picker, observability)
-are **new functionality this tool doesn't have today** — as opposed to phases 0-7, which replace
+are **new functionality this tool doesn't have today** — as opposed to phases 0-6, which replace
 existing functionality (`wolfpack`'s CLI-driven generation) with a better architecture. See "Plan
 split" below.

@@ -2,16 +2,18 @@
 
 Status: **DRAFT (2026-09-07)** — not started. Gated on
 [`001-2026-09-05-deepagents-modernization-plan-DRAFT.md`](001-2026-09-05-deepagents-modernization-plan-DRAFT.md)'s
-phases 0-7 being **done and validated on real rules**, not just "phases finished."
+phases 0-6 being **done and validated on real rules**, not just "phases finished." (There is no phase 7
+in 001 — retirement moved into phase 0 as a clean-slate first step; see 001's "Plan split"/"Retirement."
+This plan's own phases still start numbering at 8, continuing 001's original sequence.)
 
 ## Objective
 
 Add MCP and AG-UI front-ends (with Okta auth and a per-user session picker) plus OTel observability to
-`knowledgexpert`. This is **new functionality the tool doesn't have today** — 001's phases 0-7 replace
+`knowledgexpert`. This is **new functionality the tool doesn't have today** — 001's phases 0-6 replace
 `wolfpack`'s existing CLI-driven generation with a better architecture; this plan builds genuine
 multi-tenant infrastructure (authentication, per-session Postgres state, distributed tracing) that has
 no equivalent in the current legacy stack. `wolfpack_mcp.py` and `copilot_api.py` were retired outright
-in 001's phase 7, not kept as a bridge — the MCP/AG-UI built here are fresh, not restorations.
+in 001's phase 0, not kept as a bridge — the MCP/AG-UI built here are fresh, not restorations.
 
 ## Why this is a separate plan, not phases 8-10 of 001
 
@@ -21,7 +23,7 @@ else in 001 (checkpointer, auth, S3 backend, session picker), which is a verifie
 code. Building Okta auth, per-session Postgres state, and OTel on top of an unproven core is a bet made
 before there's evidence the core works. **Do not start this plan reflexively just because 001 reached
 its last phase** — first confirm, on real `autoins` rules generated through the CLI, that a human is
-actually happy with what phases 0-7 produce. If that validation surfaces problems with the
+actually happy with what phases 0-6 produce. If that validation surfaces problems with the
 supervisor/validator/generator design, this plan's phases may need to change along with it, or wait
 longer.
 
@@ -52,8 +54,8 @@ Numbered 8-10, continuing 001's sequence — there is no phase "1" here.
 8. MCP front-end: `/workspace/` route swapped to `StateBackend`, structured response extraction,
    Postgres checkpointer wired in (see 001's "Conversational memory" — same instance/database AG-UI
    will use in phase 9).
-   *Docs*: `README.md` MCP section (re)written — this front-end doesn't exist between 001's phase 7 and
-   this phase landing.
+   *Docs*: `README.md` MCP section (re)written — this front-end doesn't exist between 001's phase 0
+   (retirement) and this phase landing.
 9. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config, Postgres
    checkpointer setup mirroring `copilotkit_server.py`'s `lifespan()` — explicit
    `await checkpointer.setup()` on startup), **plus the session picker**: `user_registry`/`user_sessions`
