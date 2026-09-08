@@ -122,7 +122,8 @@ knowledgenet-examples/
 ```
 
 `knowledgexpert` itself keeps only what's genuinely generic: the DeepAgents graph/agent code,
-LLM/model config, the Postgres checkpointer, and the CLI/MCP-server/AG-UI front-end code — plus,
+LLM/model config, the checkpointer plumbing (SQLite for CLI, Postgres for MCP/AG-UI — see
+"Conversational memory" below), and the CLI/MCP-server/AG-UI front-end code — plus,
 optionally, a minimal generic fallback prompt template for bootstrapping a brand-new target application
 before anyone's curated real content for it. This generalizes beyond `autoins`: any future target
 application gets its own `<app>-rulegen/` sibling folder wherever that application's repo lives —
@@ -203,8 +204,8 @@ config parameter at all). New rule code and new test-artifact files, by contrast
 `write` (nothing pre-existing to clobber).
 
 **Revision context**: the path of the file being revised is still recorded in conversation state from
-the turn that originally generated it (via the Postgres checkpointer — see "Conversational memory"
-below), so the revising subagent knows where to start — but now it can also `grep`/`glob`/`ls` beyond
+the turn that originally generated it (via the checkpointer — see "Conversational memory" below), so
+the revising subagent knows where to start — but now it can also `grep`/`glob`/`ls` beyond
 that single file through its live workspace-mounted backend if the fix needs broader context. This
 also removes the earlier gap around feedback referencing a file the session didn't itself
 generate/track: the subagent can find it via `glob`/`grep` instead of requiring a tracked path.
@@ -307,6 +308,10 @@ is, in embryonic form, an interactive spec-authoring tool — a natural directio
 whole). That's a plausible future extension this design enables, not something scoped/built now — see
 "Explicitly out of scope" below.
 
+Note the checkpointer *backend* differs by front-end (SQLite for CLI, Postgres for MCP/AG-UI — see
+"Technology" under "Conversational memory" below); "same checkpointer" above means the same *thread*,
+not necessarily the same storage engine, for a given front-end.
+
 **Conversational memory / iterative feedback (post-generation loop)** — new functionality, not present
 in `wolfpack` today (its `SqliteSaver` checkpointer is wired up but the graph doesn't use conversation
 history to inform revision — every request is generated fresh). This is the **post-generation**
@@ -323,15 +328,30 @@ the prior turn(s) for that subagent to make a targeted revision rather than rege
   guidance — on a revision, read the current workspace file first (see the workspace read-access
   question above), understand what's there, make the targeted change, and preserve everything the
   feedback didn't ask to change, rather than regenerating the whole artifact from scratch.
-- **Technology**: the same Postgres-backed checkpointer pattern `carqna-agent` uses
-  (`AsyncPostgresSaver`, explicit `await checkpointer.setup()` on startup, a fixed `thread_id` per
-  session/CLI run — see `carqna-agent/src/agent/graph.py`'s `_get_checkpointer_conn_string()` and
-  `src/agent/carqna_cli.py`). Same pattern as the Okta decision above: reuse the *mechanism*, not
-  `carqna-agent`'s actual Postgres instance/database — `knowledgexpert` gets its own
-  database/connection string, configurable per deployment instance.
-- Applies across all three front-ends: CLI (replacing `wolfpack_cli.py`'s SQLite checkpointer),
-  MCP (`wolfpack_mcp.py`'s `QueryRequest.session_id` already threads a session id through — this
-  becomes load-bearing instead of decorative), and AG-UI (multi-turn is inherent to that protocol).
+- **Technology**: mirrors `carqna-agent`'s actual split, not a single uniform backend — verified
+  directly against source (`carqna-agent/src/agent/carqna_cli.py` and `copilotkit_server.py`; the
+  `CLAUDE.md` claim that the CLI runner is Postgres-backed is stale — the real file uses SQLite):
+  - **CLI**: `AsyncSqliteSaver`, a local per-machine SQLite file (carqna's precedent: `carqna_cli.py`'s
+    `_get_cli_sqlite_path()` — `~/.carqna/carqna_cli.sqlite`, overridable via `CARQNA_CLI_SQLITE_PATH`,
+    directory auto-created). `knowledgexpert` follows the same convention with its own path/env var
+    (e.g. `~/.knowledgexpert/knowledgexpert_cli.sqlite`, overridable via `KNOWLEDGEXPERT_CLI_SQLITE_PATH`).
+    No setup/migration call needed — `AsyncSqliteSaver` never required one, unlike Postgres. Rationale
+    (per carqna's own comment): the CLI is a single local user's tool, so there's no shared resource
+    for concurrent CLI users/sessions to collide on — a local file is simpler than standing up Postgres
+    for a single-user front-end.
+  - **AG-UI**: `AsyncPostgresSaver` (own `knowledgexpert` database/connection string via `POSTGRES_URI`,
+    explicit `await checkpointer.setup()` on startup — see `carqna-agent/src/agent/graph.py`'s
+    `_get_conn_string()` and `copilotkit_server.py`'s `lifespan()`). Same pattern as the Okta decision
+    above: reuse the *mechanism*, not `carqna-agent`'s actual Postgres instance/database.
+  - **MCP**: also `AsyncPostgresSaver`, same instance/database as AG-UI — grouped with AG-UI rather than
+    CLI because it's a server process potentially serving multiple concurrent sessions
+    (`wolfpack_mcp.py`'s `QueryRequest.session_id` already threads a session id through this way — this
+    becomes load-bearing instead of decorative), the same reason AG-UI needs a shared backend rather
+    than a local file. `carqna-agent` has no MCP front-end to verify this against directly; this is
+    `knowledgexpert`-specific reasoning extending carqna's CLI-vs-server split to a third front-end.
+- Applies across all three front-ends: CLI (replacing `wolfpack_cli.py`'s existing `SqliteSaver` wiring
+  with a used-for-real one), MCP (replacing decorative session-id threading with an actual checkpointer),
+  and AG-UI (multi-turn is inherent to that protocol).
 - The same checkpointer/thread also carries the pre-generation validator loop (see "Rule spec
   validation" above) — one conversation, one `thread_id`, both loops are just different classification
   outcomes the supervisor routes on at different points in that same conversation's lifecycle.
@@ -370,12 +390,14 @@ config-file/argparse approach.** Verified directly against `carqna-agent/src/age
 `auth.py`: plain `os.getenv`/`os.environ` reads (via `python-dotenv`'s `load_dotenv()`), not a
 settings framework, no dedicated config class. Two kinds of env var:
 - **Scalars**, read directly: `LLM_MODEL` (with a sensible default), `POSTGRES_URI` (checkpointer
-  connection string), S3 credentials (`S3_ENDPOINT_URL`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/
-  `S3_REGION`, required with no default — fails loud if missing), and (AG-UI only) the Okta
-  equivalents of carqna's `AUTH0_DOMAIN`/`AUTH0_AUDIENCE` — carqna's own auth module is deliberately
-  generic JWT/JWKS verification, documented there as "Okta/Auth0," so the mechanism already supports
-  Okta as-is; only the env var names and values are `knowledgexpert`'s own, not shared with carqna
-  (per the earlier Okta decision above).
+  connection string — MCP/AG-UI only, see "Conversational memory" above), `KNOWLEDGEXPERT_CLI_SQLITE_PATH`
+  (CLI-only, local checkpointer file, defaulting to something like `~/.knowledgexpert/knowledgexpert_cli.sqlite`
+  — mirrors carqna_cli.py's `CARQNA_CLI_SQLITE_PATH`), S3 credentials (`S3_ENDPOINT_URL`/
+  `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/`S3_REGION`, required with no default — fails loud if
+  missing), and (AG-UI only) the Okta equivalents of carqna's `AUTH0_DOMAIN`/`AUTH0_AUDIENCE` —
+  carqna's own auth module is deliberately generic JWT/JWKS verification, documented there as
+  "Okta/Auth0," so the mechanism already supports Okta as-is; only the env var names and values are
+  `knowledgexpert`'s own, not shared with carqna (per the earlier Okta decision above).
 - **Paths**, pointing at real files/directories rather than embedding their content: carqna's
   `PROMPTS_DIR` (a directory of markdown prompt files) and `MCP_CONFIG_PATH` (one JSON file) are the
   precedent. For `knowledgexpert`, one env var — e.g. `RULEGEN_ROOT` — points at the current target
@@ -561,18 +583,24 @@ None outstanding — everything raised during design discussion has been resolve
 5. test-generator subagent (artifact authoring only — no test-tool execution; see "Test tool
    integration," out of scope).
    *Docs*: knowledge-base curation guide gains `testing-guidelines/` conventions.
-6. Conversational memory / iterative feedback (post-generation loop): Postgres-backed checkpointer (own
-   database, per-instance configurable — see above), supervisor logic to recognize and route feedback on
-   prior artifacts to the subagent that produced them, revised prompts covering generate-fresh vs.
-   revise-existing. The `CompositeBackend`-based live workspace access (see "Workspace" above) already
-   exists from phases 3-5 — this phase is about the supervisor's routing/state logic, not new backend
-   plumbing. Reuses the same checkpointer wiring the phase-2 validator loop already established.
-   CLI front-end only at this point.
+6. Conversational memory / iterative feedback (post-generation loop): checkpointer wiring — SQLite for
+   the CLI (own local file, no setup/migration needed), Postgres for MCP/AG-UI (own database,
+   per-instance configurable) — see "Conversational memory" above. Supervisor logic to recognize and
+   route feedback on prior artifacts to the subagent that produced them, revised prompts covering
+   generate-fresh vs. revise-existing. The `CompositeBackend`-based live workspace access (see
+   "Workspace" above) already exists from phases 3-5 — this phase is about the supervisor's
+   routing/state logic, not new backend plumbing. Reuses the same checkpointer wiring the phase-2
+   validator loop already established. CLI front-end only at this point, so only the SQLite path is
+   exercised here — Postgres wiring for MCP/AG-UI lands with those front-ends (phases 7-8).
    *Docs*: `README.md`/CLI docs gain the feedback/revision workflow (how to report an issue in the
    same session so the right subagent picks it up).
-7. MCP front-end: `/workspace/` route swapped to `StateBackend`, structured response extraction.
+7. MCP front-end: `/workspace/` route swapped to `StateBackend`, structured response extraction,
+   Postgres checkpointer wired in (see "Conversational memory" above — same instance/database AG-UI
+   will use in phase 8).
    *Docs*: `README.md` MCP section rewritten to the new server.
-8. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config),
+8. AG-UI front-end + Okta auth (real `ag-ui-langgraph` integration, per-instance Okta config,
+   Postgres checkpointer setup mirroring `copilotkit_server.py`'s `lifespan()` — explicit
+   `await checkpointer.setup()` on startup),
    including per-user workspace `root_dir` derivation from the authenticated identity (see multi-user
    isolation notes under "Workspace" above — this is the critical piece to get right, not optional).
    *Docs*: `README.md` gains AG-UI/Okta setup; `CLAUDE.md` updated to describe the now-complete new
