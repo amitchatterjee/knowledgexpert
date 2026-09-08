@@ -6,18 +6,17 @@ The examples in this README assume a fully trusted developer environment. For a 
 ## Initial setup
 
 ### Create a virtual environment
-Create a new Python virtual environment named `ai-venv` under your home directory:
+`knowledgexpert` is `uv`-managed, with an in-project virtual environment (`.venv` under the repo root),
+following `knowledgenet`'s per-project convention. From the repo root:
 
 ```bash
-cd ~
-python3.14 -m venv ai-venv
+uv venv
+uv sync
 ```
 
-#### Activate the Virtual Environment
-Add the following line to your `~/.bashrc` file:
-```bash
-echo 'source ~/ai-venv/bin/activate' >> ~/.bashrc
-```
+This creates `.venv/` and installs the project's dependencies (see `pyproject.toml`) into it. No
+`~/.bashrc` activation line is needed — use `uv run <command>` to run things inside the venv, or
+`source .venv/bin/activate` for an interactive shell.
 
 ### Add the necessary environment variables to ~/.bashrc
 ```bash

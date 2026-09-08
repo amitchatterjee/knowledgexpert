@@ -1,38 +1,6 @@
 # This compose file is intended for a fully trusted developer environment.
 # For production, the same services must be ported to a secure deployment model with proper secret handling, access controls, and automation.
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-
-  chromadb:
-    profiles: ["dev"]
-    image: chromadb/chroma
-    container_name: chromadb
-    ports:
-      - "8000:8000"
-    volumes:
-      - chroma_data:/data
-    restart: unless-stopped
-
-  neo4j:
-    image: neo4j:5.19
-    container_name: neo4j
-    ports:
-      - "8080:7474"   # HTTP UI
-      - "7687:7687"   # Bolt protocol
-    environment:
-      - NEO4J_AUTH=neo4j/password
-      - NEO4J_PLUGINS=["apoc"]
-    volumes:
-      - neo4j_data:/data
-    restart: unless-stopped
-
   opensearch:
     image: opensearch-with-mcp:latest
     build:
@@ -62,40 +30,7 @@ services:
       - 9200:9200 # REST API
       #- 9600:9600 # Performance Analyzer
 
-  linux-exec-mcp:
-    image: linux-exec-mcp:latest
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/linux-exec-mcp/Dockerfile
-    container_name: linux-exec-mcp
-    ports:
-      - "8002:8002"
-    volumes:
-      # Mount the work directory from the repo
-      - ../../data/linux-exec:/work:ro
-      # Mount the user's Knowledgexpert config directory into the mcp user's home
-      - ${HOME}/.knowledgexpert:/home/mcp/.knowledgexpert:rw
-    environment:
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-
-  knowledgexpert-base:
-    profiles: ["build"]
-    image: knowledgexpert-base:latest
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/knowledgexpert-base/Dockerfile
-
 volumes:
-  ollama_data:
-    driver: local
-    name: ollama_data
-  chroma_data:
-    driver: local
-    name: chroma_data
-  neo4j_data:
-    driver: local
-    name: neo4j_data
   opensearch-data:
     driver: local
     name: opensearch-data
