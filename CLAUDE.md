@@ -12,12 +12,12 @@ semantic layer on top: fact entities, loaders/parsers, a rule-config convention,
 configuration, and test artifacts — for a target application, grounded in that application's own
 semantic layer plus `knowledgenet`'s foundational docs and a curated set of exemplar rules.
 
-This project is a PoC, currently mid-migration between two architectures — see **Current status**
-below before assuming any given module is still live.
+This project is a PoC, mid-rewrite onto a new architecture — see **Current status** below before
+assuming any given module exists.
 
-## Current status: migration in progress
+## Current status: legacy stack retired, new architecture not yet built
 
-**Read [`.plans/001-2026-09-05-deepagents-modernization-plan-DRAFT.md`](.plans/001-2026-09-05-deepagents-modernization-plan-DRAFT.md)
+**Read [`.plans/001-2026-09-05-deepagents-modernization-plan-INPROG.md`](.plans/001-2026-09-05-deepagents-modernization-plan-INPROG.md)
 first.** It is the authoritative description of the whole target architecture and why — including the
 parts (MCP/AG-UI/session-picker/observability) that aren't in its own phase list. That plan covers
 **phases 0-6 only** (retiring the legacy stack upfront as a clean-slate phase 0, then tooling and the
@@ -27,76 +27,65 @@ covers phases 8-10 (MCP, AG-UI+Okta+session-picker, observability) — genuinely
 started, and deliberately gated on 001 being done *and validated on real generated rules*, not just
 "phases finished." See 001's "Plan split" section for the reasoning. The summary below:
 
-- **Legacy stack (currently what actually runs)**: `expert.py` (already deprecated in its own
-  docstring), `raven.py` (a `langchain.agents.create_agent` ReAct-style agent with MCP tools and a
-  vector retriever), and `wolfpack.py` (a `LangGraph` `StateGraph` of four `Raven` roles — `analyst`
-  as spec-interpreter/router, `developer`, `tester`, and a stubbed-out `implementor` for config
-  generation — writing files straight to disk via `write_files_tool`). Knowledge retrieval is
-  vector-store based (OpenSearch/ChromaDB for the "know-it-all" expert content, per-collection stores
-  for wolfpack's `rules_collection`/`app_docs_collection`/`framework_docs_collection`), with an
-  earlier Neo4j graph-retrieval path. Front-ends: `wolfpack_cli.py`, `wolfpack_mcp.py` (FastMCP), and
-  `copilot_api.py` (a hand-rolled FastAPI endpoint — not real AG-UI/CopilotKit protocol, same
-  dead-end `carqna-agent` hit and later replaced; see that repo's `copilotkit_server.py` history).
-  Tooling is pip + `requirements.txt` + a shared `~/ai-venv`, not `uv`.
+- **Legacy stack — retired 2026-09-08 (phase 0 of plan 001)**: `expert.py`, `raven.py` (a
+  `langchain.agents.create_agent` ReAct-style agent with MCP tools and a vector retriever), and
+  `wolfpack.py` (a `LangGraph` `StateGraph` of four `Raven` roles — `analyst` as spec-interpreter/
+  router, `developer`, `tester`, and a stubbed-out `implementor` for config generation — writing files
+  straight to disk via `write_files_tool`) are all deleted, along with their vector-store-based
+  knowledge retrieval (OpenSearch/ChromaDB collections, an earlier Neo4j graph-retrieval path), their
+  front-ends (`wolfpack_cli.py`, `wolfpack_mcp.py`, `copilot_api.py`), and pip/`requirements.txt`/
+  `~/ai-venv` tooling. None of this exists in the working tree anymore — recover any of it via
+  `git log`/`git show` if ever needed, not by assuming it's still here. See plan 001's "Retirement"
+  section for the full list and reasoning (deferring retirement past parity was considered and
+  rejected — this is a branch nothing else consumes, so there was nothing real to preserve by keeping
+  it around).
 - **Target architecture**: a DeepAgents supervisor/subagent graph modeled directly on
   [`carqna-agent`](../carqna-agent) — a filesystem-backed (not vector-indexed) knowledge base via
   DeepAgents' `BackendProtocol` (`FilesystemBackend` now, RustFS-compatible `S3Backend` later,
   following `carqna-agent/src/agent/s3_backend.py`'s pattern), a supervisor that interprets an
   app-specific specification template and routes to **code-generator**, **config-generator**, and
   **test-generator** subagents, and three front-ends (CLI, MCP, AG-UI/FastAPI) over one graph —
-  `uv`-managed like `knowledgenet` and `carqna-agent`.
-- Until the plan's phases land, treat `wolfpack.py` and its front-ends as the working reference
-  implementation for *behavior* (what a request/response round-trip should accomplish), not as code
-  to extend — new work happens on the DeepAgents rewrite.
+  `uv`-managed like `knowledgenet` and `carqna-agent`, in-project `.venv` (diverging from
+  `carqna-agent`'s external one, per `knowledgenet`'s convention). Nothing here is built yet except
+  phase 0's tooling — `src/knowledgexpert/` is currently just an empty package.
 
-## Repository layout (legacy, current)
+## Repository layout (current)
 
-- `src/knowledgexpert/` — package: `expert.py`, `raven.py`, `wolfpack.py`, `structures.py` (pydantic
-  output schemas: `AnalystOutput`, `CodingOutput`, `TestingOutput`, `TestFileOutput`), vector/graph
-  plumbing (`vector_backend.py`, `chunker.py`, `html_splitter.py`), `util.py`.
-- `src/` (top-level scripts) — CLI/MCP/API entry points: `expert_cli.py`, `raven_cli.py`,
-  `wolfpack_cli.py`, `wolfpack_mcp.py`, `copilot_api.py`, `vector_store.py`, `vector_query.py`,
-  `graph_store.py`, `linux_exec_mcp.py`.
-- `infrastructure/` — `docker/` (Compose services: OpenSearch w/ MCP plugin, a knowledgexpert base
-  image, `linux-exec-mcp`), `conf/{expert,raven,wolfpack}/` (per-agent `config.json` +
-  `agentic_prompt.txt`), `admin/opensearch/` (role/user/rolesmapping `ndjson` fixtures).
+- `src/knowledgexpert/` — package, currently just an empty `__init__.py`. Phase 1+ of plan 001 fills
+  this in with the DeepAgents graph/agent code directly (flat, not nested under an `agent/`
+  subpackage — that was tried and deliberately reverted, since it only existed to mirror
+  `carqna-agent`'s own LangGraph-project-template naming convention, which this project doesn't need).
+- `infrastructure/` — `docker/docker-compose.yml` now has just the `opensearch` service (ChromaDB,
+  Neo4j, Ollama, `linux-exec-mcp`, and the `knowledgexpert-base` build image were all retired in phase
+  0); `conf/mcp/opensearch/` (MCP tool registration for OpenSearch — **not retired**, relocates to
+  `knowledgenet-examples/autoins-rulegen/` in phase 1 per plan 001's "Repository layout"); `conf/
+  log-config.yaml` (generic, untouched); `admin/opensearch/` (role/user/rolesmapping `ndjson`
+  fixtures).
 - `data/` — `opensearch/msrp/` (car-pricing bulk-load data), `linux-exec/insurance-docs/` (the
-  filesystem-backed corpus the `carqna-agent` `insurance_expert` subagent already reads — likely
-  reusable as-is for the new knowledge base).
-- `benchmark/` — sample prompts (`raven/prompt-*.txt`) used as CLI/MCP smoke inputs.
-- `.plans/` — see below; only the current dated plan is authoritative, retired plans are marked as such.
+  filesystem-backed corpus the `carqna-agent` `insurance_expert` subagent already reads — candidate
+  reuse for the new knowledge base, not yet decided).
+- `benchmark/` — legacy `raven`/`bookworm` sample prompts. Not yet retired (phase 0 didn't touch it)
+  and not part of the new architecture — don't treat it as current, but don't assume it's gone either.
+- `.plans/` — `001-...-INPROG.md` (phases 0-6, current work) and `002-...-DRAFT.md` (phases 8-10,
+  gated on 001 being validated on real rules, not started) — see `001`'s "Plan split" section. Older
+  retired plans are marked `-RETIRED`.
+- `docs/readme-development.md` — contributor setup/lint/type-check/test commands; this file
+  summarizes only what's needed for day-to-day edits.
 
-## Environment (legacy, current)
+## Environment (current)
 
-```bash
-python3.14 -m venv ~/ai-venv
-source ~/ai-venv/bin/activate   # or add to ~/.bashrc
-pip install -r requirements.txt
-```
+`uv`-managed, in-project `.venv`: `uv venv && uv sync --group dev`. See
+`docs/readme-development.md` for the full contributor workflow (lint, type-check, tests).
 
-Required env vars: `KNOWLEDGEXPERT_HOME`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-`EMBEDDING_MODEL_DATA`, `EMBEDDING_MODEL_CODE`, `KNOWLEDGEXPERT_ENV` (`dev` → ChromaDB, `perf` →
-OpenSearch). Full one-time setup (Docker infra, OpenSearch users/roles, vector/graph data loading) is
-in `README.md` — don't re-derive it here, it's already fully scripted there.
+No env vars are required yet — phase 1+ introduces the new config surface (`RULEGEN_ROOT`,
+`ANTHROPIC_API_KEY`, etc., per plan 001's "Configuration approach"); nothing reads any env var today.
 
-## Running things today (legacy)
+## Running things today
 
-```bash
-# Wolfpack CLI (interactive)
-dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- \
-  python $KNOWLEDGEXPERT_HOME/src/wolfpack_cli.py
-
-# Wolfpack MCP server
-dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- \
-  fastmcp run "$KNOWLEDGEXPERT_HOME/src/wolfpack_mcp.py" --transport http --port 9901 --host 0.0.0.0
-
-# Copilot API (hand-rolled, superseded design — see Current status above)
-dotenv --file "${KNOWLEDGEXPERT_HOME}/env.${KNOWLEDGEXPERT_ENV}" run -- \
-  uvicorn copilot_api:app --host 0.0.0.0 --port 9001 --app-dir "$KNOWLEDGEXPERT_HOME/src"
-```
-
-See `README.md` for the full command reference (vector/graph data loading, OpenSearch setup, Raven
-CLI examples, checkpointer inspection).
+**Nothing runs yet.** Phase 0 (legacy retirement + `uv` tooling) is done; phases 1-6 — the knowledge
+base, the supervisor/rule-spec-validator, and the code/config/test-generator subagents — haven't
+landed, so there's no CLI (or anything else) to invoke until phase 3 lands the first generator. See
+plan 001's phase list for what's next.
 
 ## Editing conventions
 

@@ -1,7 +1,12 @@
 # DeepAgents Modernization Plan for knowledgexpert
 
-Status: **DRAFT (2026-09-05)** — architecture agreed via discussion; implementation has **not**
-started. Further design conversation is expected before this moves to `-INPROG`.
+Status: **INPROG (2026-09-08)** — architecture agreed via discussion, implementation started.
+**Phase 0** (clean-slate legacy retirement + `uv` tooling) is **done**: legacy Python modules/infra/
+config retired, `pyproject.toml`/`uv.lock`/in-project `.venv` in place (`uv sync` verified clean,
+package layout flat under `src/knowledgexpert/`, no nested `agent/` subpackage), and docs brought back
+in line with reality (`README.md`/`CLAUDE.md` stripped of legacy sections, new
+`docs/readme-development.md`). Not yet committed as of this status update. Phases 1-6 not started —
+next up is phase 1, starting with `specification-guidelines/` content, interactively.
 
 ## Plan split
 

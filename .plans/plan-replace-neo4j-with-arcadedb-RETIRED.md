@@ -1,7 +1,7 @@
 # Neo4j to ArcadeDB Migration Plan
 
 > **RETIRED (2026-09-05).** Superseded by
-> [`001-2026-09-05-deepagents-modernization-plan-DRAFT.md`](001-2026-09-05-deepagents-modernization-plan-DRAFT.md),
+> [`001-2026-09-05-deepagents-modernization-plan-INPROG.md`](001-2026-09-05-deepagents-modernization-plan-INPROG.md),
 > which retires graph-store-based (Neo4j) retrieval entirely in favor of a filesystem-backed knowledge
 > base. Kept for historical reference only — do not act on this plan.
 

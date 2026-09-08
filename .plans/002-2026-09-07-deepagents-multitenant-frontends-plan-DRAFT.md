@@ -1,7 +1,7 @@
 # DeepAgents Multi-Tenant Front-Ends Plan for knowledgexpert
 
 Status: **DRAFT (2026-09-07)** — not started. Gated on
-[`001-2026-09-05-deepagents-modernization-plan-DRAFT.md`](001-2026-09-05-deepagents-modernization-plan-DRAFT.md)'s
+[`001-2026-09-05-deepagents-modernization-plan-INPROG.md`](001-2026-09-05-deepagents-modernization-plan-INPROG.md)'s
 phases 0-6 being **done and validated on real rules**, not just "phases finished." (There is no phase 7
 in 001 — retirement moved into phase 0 as a clean-slate first step; see 001's "Plan split"/"Retirement."
 This plan's own phases still start numbering at 8, continuing 001's original sequence.)
