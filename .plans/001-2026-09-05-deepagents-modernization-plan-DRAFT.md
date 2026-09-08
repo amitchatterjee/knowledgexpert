@@ -400,10 +400,14 @@ something to design from scratch:
   "Workspace" above) — no extra schema or provisioning logic beyond the `user_sessions` row itself.
 - **Not needed elsewhere**: CLI already gets an equivalent of this for free — `carqna_cli.py`'s local
   `sessions` table (find-or-create by `--session <name>`, no `user_id` since the SQLite file itself is
-  already scoped to one local user) is part of the CLI reuse already planned above, no separate design
-  needed. MCP has no authenticated identity (see "Auth" — AG-UI-only) and no picker UI; its existing
-  `QueryRequest.session_id` (client-supplied, used directly as the thread id, no `user_registry` join)
-  is a different, simpler mechanism and stays that way.
+  already scoped to one local user) lives in **the same SQLite file, over the same connection, as the
+  CLI checkpointer itself** (`_get_or_create_session(checkpointer.conn, args.session)` — one file, one
+  `AsyncSqliteSaver`, not a separate database for sessions vs. conversation state the way AG-UI needs
+  two Postgres tables alongside its checkpointer). This is part of the CLI reuse already planned above
+  (see "Conversational memory — Technology" above), no separate design needed. MCP has no authenticated
+  identity (see "Auth" — AG-UI-only) and no picker UI; its existing `QueryRequest.session_id`
+  (client-supplied, used directly as the thread id, no `user_registry` join) is a different, simpler
+  mechanism and stays that way.
 
 **Front-ends**, all over one graph, mirroring `carqna-agent`:
 - **CLI** — replaces `wolfpack_cli.py`.
