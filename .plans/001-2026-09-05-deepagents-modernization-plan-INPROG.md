@@ -1,12 +1,16 @@
 # DeepAgents Modernization Plan for knowledgexpert
 
-Status: **INPROG (2026-09-08)** — architecture agreed via discussion, implementation started.
+Status: **INPROG (2026-09-10)** — architecture agreed via discussion, implementation started.
 **Phase 0** (clean-slate legacy retirement + `uv` tooling) is **done**: legacy Python modules/infra/
 config retired, `pyproject.toml`/`uv.lock`/in-project `.venv` in place (`uv sync` verified clean,
 package layout flat under `src/knowledgexpert/`, no nested `agent/` subpackage), and docs brought back
 in line with reality (`README.md`/`CLAUDE.md` stripped of legacy sections, new
-`docs/readme-development.md`). Not yet committed as of this status update. Phases 1-6 not started —
-next up is phase 1, starting with `specification-guidelines/` content, interactively.
+`docs/readme-development.md`). **Phase 1 scaffolding started** (content not yet authored): knowledge-base
+backend code (`s3_backend.py` copied from `carqna-agent`, `graph.py`'s `_create_knowledge_backend()`/
+`_load_prompt_from_file()`, `.env.example`), and the `autoins-rulegen/` directory structure — see
+"Repository layout" below for the `knowledge/`/`target/knowledge/`/`tools/` split, settled
+2026-09-10. Not yet committed as of this status update. Next up: `specification-guidelines/` content,
+interactively.
 
 ## Plan split
 
@@ -89,17 +93,40 @@ simplicity tradeoff: **different target applications may run on different `knowl
 different functional/programming interfaces**, so a single shared foundational copy would actually be
 wrong for any application not pinned to the latest version — each app's foundational docs must match
 the `knowledgenet` version that app actually uses. A subagent only ever talks to one backend, the
-current app's; no composite/multi-backend mechanism needed. Seven top-level directories per application:
+current app's; no composite/multi-backend mechanism needed. Seven top-level directories per
+application, split by where the content originates — three are hand-authored guidance about *this
+tool*, kept directly under `<app>-rulegen/knowledge/`; the other four are extracted/assembled from
+the target application's own real source material (`knowledgenet` and, for `autoins`, the `autoins`
+example itself) rather than hand-duplicated, so they can't drift out of sync with what's actually
+true of the application — see "Knowledge-base assembly" below for how and where that assembly
+happens:
 
-- **`knowledgenet-foundation/`** — `knowledgenet` framework docs (`concepts.md`, `rule-service.md`,
+- **`knowledgenet-foundation/`** (generated) — `knowledgenet` framework docs (`concepts.md`,
   `rules-authoring.md`, generated API docs) **matching the specific `knowledgenet` version this
-  application is built against**. Not assumed identical across applications.
-- **`application-domain/`** — business/domain meaning (e.g. `autoins/docs/description.md`,
-  `entity-relationships.md`).
-- **`application-architecture/`** (renamed from `rules-engine-architecture/` — clearer alongside
-  `knowledgenet-foundation/`, which already owns "rules engine") — the app's fact model/entities and
-  loaders/helpers.
-- **`specification-guidelines/`** (new — split out on its own, not folded into
+  application is built against**. Not assumed identical across applications. Deliberately excludes
+  `rule-service.md` (platform/bootstrap-framework guide for building a new application on
+  `knowledgenet` — out of scope, since `knowledgexpert` only authors rules against an
+  already-bootstrapped application; its rule-authoring-relevant parts, e.g. Collectors/EventFacts,
+  are already covered by `rules-authoring.md`) and `rule-creation.md`/`readme-development.md`
+  (redundant/contributor-only) — see `autoins-rulegen/tools/assemble-knowledgenet-foundation.sh -h`
+  for the full rationale.
+- **`application-domain/`** (generated) — business/domain meaning: what problem this solves, the
+  business purpose of each rule phase (e.g. `autoins/docs/description.md`, restructured to hold only
+  this — see "Knowledge-base assembly" below). Not the fact model (`entity-relationships.md` is
+  `application-architecture/`'s source, not this one) and not a catalog of current rules (that's
+  `exemplars/`'s job, sourced live from `autoins/rules/` so it can't drift the way a hand-maintained
+  list would).
+- **`application-architecture/`** (generated; renamed from `rules-engine-architecture/` — clearer
+  alongside `knowledgenet-foundation/`, which already owns "rules engine") — the app's fact
+  model/entities and loaders/helpers. For `autoins`: `entities.py` (the Pydantic fact model —
+  ground truth for exact field names/types, preferred over hand-written prose since it can't drift
+  from itself), `fact_io.py` (how `rule-config.json`/EDI/CSV become FactSet facts — the `Wrapper`
+  per-ruleset-config and per-claim `Action` `Collector` wiring specifically), `util.py` (the
+  rule-author helper conventions every rule uses instead of reinventing — `execute()`/`rule_config()`/
+  `create_action()`), and `entity-relationships.md` (business-meaning framing + cardinalities, kept
+  for what isn't recoverable from the code alone). `edi_parser.py` and `bluebook.py` excluded — see
+  "Explicitly out of scope" above for why.
+- **`specification-guidelines/`** (hand-authored; new — split out on its own, not folded into
   `application-architecture/`, since it's authored/versioned as its own unit and is central enough to
   warrant it) — the app's **specification template** the supervisor interprets requests against,
   instructions on how to populate it, and the **sufficiency criteria the rule-spec-validator subagent
@@ -108,12 +135,12 @@ current app's; no composite/multi-backend mechanism needed. Seven top-level dire
   Written as free-form guidance, consistent with every other directory here, not a rigid
   machine-checkable schema — the validator subagent interprets it the same way the other subagents
   interpret their own guideline directories.
-- **`configuration-guidelines/`** — `rule-config.json` conventions, split out from
+- **`configuration-guidelines/`** (hand-authored) — `rule-config.json` conventions, split out from
   `application-architecture/` for the same reason as testing below.
-- **`exemplars/`** — a deliberately curated set of reference rule implementations for the
+- **`exemplars/`** (generated) — a deliberately curated set of reference rule implementations for the
   code-generator subagent to use as style/pattern guidance — distinct from "whatever rules currently
   exist in the app."
-- **`testing-guidelines/`** — documentation of test artifact formats and workflow (e.g.
+- **`testing-guidelines/`** (hand-authored) — documentation of test artifact formats and workflow (e.g.
   `autoins/docs/testing.md`'s EDI format, `expected.csv` schema, the "write data → run → dump_result →
   promote to expected" workflow). Split out from `application-architecture/`: different lifecycle/owner
   than the app's code architecture, and maps directly to the test-generator subagent's dedicated
@@ -130,21 +157,99 @@ For `autoins`: a new sibling folder `knowledgenet-examples/autoins-rulegen/`, no
 
 ```
 knowledgenet-examples/
-  autoins/                    (existing — the application itself)
+  autoins/                    (existing — the application itself; source for the generated dirs below)
   autoins-rulegen/            (new)
-    knowledge/
-      knowledgenet-foundation/
-      application-domain/
-      application-architecture/
+    knowledge/                hand-authored, per-application guidance (not generated) — see the
+                               (hand-authored) tags above
       specification-guidelines/
       configuration-guidelines/
-      exemplars/
       testing-guidelines/
+    target/knowledge/         generated, gitignored — see "Knowledge-base assembly" below
+    tools/                    assembly/publish scripts — see "Knowledge-base assembly" below
     prompts/                  supervisor + subagent prompts tuned for autoins
     mcp/                      optional — omitted entirely if autoins defines no MCP services
     infra/                    optional — docker-compose/admin fixtures/data for whatever live-data
                                service the MCP config above points at (e.g. OpenSearch)
 ```
+
+**Knowledge-base assembly — `target/knowledge/` is a release artifact, not hand-curated content.**
+The four (generated) directories above (`knowledgenet-foundation/`, `application-domain/`,
+`application-architecture/`, `exemplars/`) are built by scripts under `<app>-rulegen/tools/`, run as
+part of `knowledgenet`/`autoins`'s release process, that pull from those sibling repos' own real docs
+and rules (for `autoins`: `knowledgenet/docs/{concepts,rules-authoring}.md` + `docs/api/*.md`,
+`autoins/docs/description.md`, `autoins/docs/entity-relationships.md` + `autoins/src/autoins/
+{entities,fact_io,util}.py`, and `autoins/rules/{02_validation,03_contract,04_fraud}/` for exemplars
+(not `05_finalization/` — framework code, see "Explicitly out of scope" above) — see
+`autoins-rulegen/tools/README.md` for the exact mapping). `tools/` also copies the three
+(hand-authored) `knowledge/` directories in alongside
+the generated ones, so the result — `target/knowledge/` — is one complete, ready-to-ship knowledge
+base, matching the `RULEGEN_ROOT/knowledge` shape `_create_knowledge_backend()` expects. `target/`
+itself is generated and gitignored (`**/target/` is already `knowledgenet-examples`'s convention,
+matching `autoins/target/`'s own build output), never committed.
+
+**Assembly is whole-file copying, never section-excerpting — source documents are restructured to
+match instead.** The first attempt at `application-domain/`'s content (excerpting the relevant
+paragraphs out of `autoins/docs/description.md`, which mixes domain framing with architecture/
+config/testing content) was rejected: a script that greps for section headers to extract content is
+brittle — nothing signals to a future editor of that document that reordering or renaming a heading
+will silently break an assembly script depending on it. Since `autoins/docs/*.md` were originally
+written for the old vector-store ingestion (not for human readers, and with no other current
+consumer — confirmed directly with the person who authored them), there's no competing reason to
+preserve their current mixed-content shape. The rule going forward: **when a source document mixes
+content belonging to multiple target directories, restructure the source document itself so each
+file maps cleanly to one destination**, and delete content that's redundant with another file
+entirely rather than relocating it. Applied to `description.md`: trimmed to business purpose + EDI/
+CSV note + "Rulesets Overview" only (this is `application-domain/`'s entire source now, one `cp`).
+Removed: "Request Fact" (redundant with `entity-relationships.md`'s own "Request" section, the actual
+source for `application-architecture/`), "Rule Configuration" (redundant with `testing.md`'s own
+`rule-config.json` section; `configuration-guidelines/` is hand-authored anyway, not sourced from
+`docs/`), the per-rule catalog (hand-maintained and drifts from the real `rules/` directory over
+time — `exemplars/`, generated fresh from `autoins/rules/` on every assembly run, is the
+non-driftable source for "what rules currently exist" instead), and "Tests" (`testing.md` already
+owns this fully). Resolved for `application-architecture/` too, but differently: its source includes
+real application code (`entities.py`, `fact_io.py`, `util.py`), not just docs, and that code has to
+keep working correctly for `autoins` independent of `knowledgexpert`'s needs — so unlike
+`description.md`, these files are **not** restructured/cleaned for KB purposes (e.g. `entities.py`'s
+duplicate `Estimate` field declarations, a real wart, are left alone; that's a separate bug-fix
+decision for the `autoins` maintainer, not something to fold into knowledge-base assembly). Instead,
+the whole-file-copy rule is satisfied by *selecting* which whole files to include
+(`entities.py`/`fact_io.py`/`util.py` in, `edi_parser.py`/`bluebook.py` out) rather than editing any
+of them — `entity-relationships.md` is the one file in this set that did get corrected, but only to
+fix a factual error (see below), not to change its scope/shape.
+
+`knowledgexpert` consumes `target/knowledge/` one of two ways, mirroring the S3-vs-filesystem backend
+choice already described above: **push it to S3** (as the `knowledge` key prefix, mirroring
+`carqna-agent`'s `tools/sync-docs.sh`), or **zip it for filesystem-backed installs** — with
+`knowledge/` itself as the archive's top-level directory, so a user unzips it anywhere and points
+`RULEGEN_ROOT` at the parent, with no code change (`_create_knowledge_backend()` already does
+`RULEGEN_ROOT/knowledge`). `prompts/`/`mcp/` are unaffected by any of this — they stay hand-authored
+directly under `<app>-rulegen/`, read from `RULEGEN_ROOT/prompts`/`RULEGEN_ROOT/mcp` as before,
+never generated or distributed via `target/`.
+
+**Not yet resolved**: (1) release-time version pinning — `autoins` currently depends on
+`knowledgenet` via a local `[tool.uv.sources]` path entry, not a version pin, so assembly needs some
+snapshot of both repos taken together; a version-stamp file inside `target/knowledge/` is a likely
+answer, not decided. (2) the local-development path, before any real release pipeline exists — running
+`tools/`'s assembly script locally and pointing `RULEGEN_ROOT` straight at `autoins-rulegen/target/`
+works for exercising the knowledge backend alone (`target/knowledge/` already matches the expected
+subpath), but `target/` has no `prompts/`/`mcp/` of its own, so that shortcut only covers KB-only
+testing, not a full run — revisit once prompts are actually wired into the graph (phase 6). (3) the
+real, package-qualified import path for the `.py` files copied into `application-architecture/`
+(`autoins.entities`, `autoins.fact_io`, `autoins.util`) isn't visible anywhere in the KB — the
+assembler flattens them to virtual paths (`application-architecture/util.py`) that don't match the
+real package name, and nothing in the file content itself states it. Confirmed via
+`autoins/rules/02_validation/validation_rules.py`'s actual imports (`from autoins.entities import
+Request`, `from autoins.util import create_action, echo, record_action_event`). A code-generator
+subagent reading only `application-architecture/` could plausibly guess a wrong import. `exemplars/`
+will incidentally contain the correct import lines once built (real rule files import this way
+already), but that's indirect. Deliberately left unaddressed for now, at the user's call — revisit
+before code generation is actually exercised end to end. Confirmed this problem is specific to
+`application-architecture/`'s three code files and doesn't extend to `exemplars/`'s rule files
+themselves: `knowledgenet`'s scanner (`src/knowledgenet/scanner.py`'s `load_rules_from_filepaths`/
+`_find_modules`) loads rule files by bare filename via `sys.path.append(dir)` +
+`importlib.import_module(module_name)`, never a dotted package path — the `NN_name/` ruleset
+directories aren't even valid Python identifiers, so rule files were never dotted-importable in the
+first place and have no module identity to lose.
 
 `knowledgexpert` itself keeps only what's genuinely generic: the DeepAgents graph/agent code,
 LLM/model config, the checkpointer plumbing (SQLite for CLI, Postgres for MCP/AG-UI — see
@@ -489,7 +594,10 @@ settings framework, no dedicated config class. Two kinds of env var:
   beneath it. This single knob is what "which target application" means at runtime — replacing the
   `--promptDir`/`--mcpConfig` flag pair with one path that already matches the "Repository layout"
   folder convention above. `mcp/` simply not existing under that root is how "this application defines
-  no MCP services" (see above) is expressed — no separate flag needed.
+  no MCP services" (see above) is expressed — no separate flag needed. Note that for a real deployment
+  `RULEGEN_ROOT/knowledge` needs to resolve to the *assembled* knowledge base, not the source
+  `<app>-rulegen/knowledge/` directly (which only has the three hand-authored dirs) — see
+  "Knowledge-base assembly" above for the S3-push/zip-distribution mechanics.
 - **Retired**: the current `infrastructure/conf/{expert,raven,wolfpack}/config.json` per-role files and
   the ~30-flag `raven_cli.py`/`wolfpack_cli.py` argparse surface. Most of that surface is
   vector-retrieval-specific (`--baseCollections`, `--ensembleWeights`, `--embeddings`,
@@ -598,6 +706,19 @@ before new code, not after:
 
 ### Explicitly out of scope
 
+- **For `autoins`, rule generation is scoped to `02_validation/`, `03_contract/`, `04_fraud/` only —
+  `05_finalization/` is framework code, not something the tool generates.** Finalization (payment
+  computation, action selection via `select_action`/`pay_on_no_action`) is maintained directly by the
+  `autoins` application, not through `knowledgexpert`. This bounds `exemplars/`'s source material to
+  the three in-scope ruleset directories under `autoins/rules/` (not `05_finalization/`), and is why
+  `bluebook.py` (used only by finalization's payment computation, and slated to move from a CSV lookup
+  to an OpenSearch-backed one — moot for this tool either way) is excluded from
+  `application-architecture/`'s source set — see "Knowledge-base assembly" above. Note this doesn't
+  reduce what in-scope rules need to know about `Action`: validation/contract/fraud rules still
+  produce `Action` facts via `util.py`'s `create_action()` (e.g. `no_policy` marking a claim
+  incomplete), which the (out-of-scope) finalization rules then select among — so `entities.py`'s
+  `Action` shape and `util.py`'s helper conventions stay fully in scope even though the ruleset that
+  consumes their output doesn't.
 - Git lifecycle management (clone/pull/push/branch/worktree) for AG-UI workspaces — assumed
   pre-provisioned per session (one worktree/branch per session, matching the session name), by the human,
   not the tool. See "Workspace" and "Session picker" above.
@@ -670,12 +791,15 @@ None outstanding — everything raised during design discussion has been resolve
 1. Knowledge-base backend + content: both `FilesystemBackend` and RustFS-compatible `S3Backend` wired
    together in this single phase (not staged local-first) — `carqna-agent`'s `S3Backend` is already
    well-tested and reusable as-is, so there's no reason to defer it behind a separate later phase.
-   Includes creating `knowledgenet-examples/autoins-rulegen/` (see "Repository layout" above) and
-   curating foundational/app-specific/exemplar/test-framework/specification content, prompts, and (if
-   applicable) MCP config + live-data infra there for `autoins` as the reference application, plus
-   migrating the existing OpenSearch infra out of `knowledgexpert/infrastructure/` into
-   `autoins-rulegen/{mcp/,infra/}`, **plus the golden fixture set** (see "Testing approach" below) that
-   phases 2-5 reuse for CLI verification.
+   Includes creating `knowledgenet-examples/autoins-rulegen/` (see "Repository layout" above) —
+   directory structure and knowledge-base backend code (`s3_backend.py`, `graph.py`'s
+   `_create_knowledge_backend()`/`_load_prompt_from_file()`) done — and curating the three
+   hand-authored `knowledge/` directories plus writing the `tools/` assembly/publish scripts for the
+   four generated ones (see "Knowledge-base assembly" above), prompts, and (if applicable) MCP config +
+   live-data infra there for `autoins` as the reference application, plus migrating the existing
+   OpenSearch infra out of `knowledgexpert/infrastructure/` into `autoins-rulegen/{mcp/,infra/}`,
+   **plus the golden fixture set** (see "Testing approach" below) that phases 2-5 reuse for CLI
+   verification.
    *Docs*: new knowledge-base curation guide (the seven directories plus prompts/mcp/infra, worked
    `autoins` example), and `README.md` gains an OpenSearch-as-MCP-tool section (how to define an
    application's collections) covering the infra just relocated here.

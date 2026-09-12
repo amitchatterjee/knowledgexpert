@@ -51,6 +51,10 @@ packages = ["knowledgexpert"]
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
 
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "src"
+
 [tool.ruff]
 lint.select = [
     "E",    # pycodestyle
