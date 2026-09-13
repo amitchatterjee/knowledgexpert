@@ -1,16 +1,22 @@
 # DeepAgents Modernization Plan for knowledgexpert
 
-Status: **INPROG (2026-09-10)** — architecture agreed via discussion, implementation started.
+Status: **INPROG (2026-09-13)** — architecture agreed via discussion, implementation started.
 **Phase 0** (clean-slate legacy retirement + `uv` tooling) is **done**: legacy Python modules/infra/
 config retired, `pyproject.toml`/`uv.lock`/in-project `.venv` in place (`uv sync` verified clean,
 package layout flat under `src/knowledgexpert/`, no nested `agent/` subpackage), and docs brought back
 in line with reality (`README.md`/`CLAUDE.md` stripped of legacy sections, new
-`docs/readme-development.md`). **Phase 1 scaffolding started** (content not yet authored): knowledge-base
-backend code (`s3_backend.py` copied from `carqna-agent`, `graph.py`'s `_create_knowledge_backend()`/
-`_load_prompt_from_file()`, `.env.example`), and the `autoins-rulegen/` directory structure — see
-"Repository layout" below for the `knowledge/`/`target/knowledge/`/`tools/` split, settled
-2026-09-10. Not yet committed as of this status update. Next up: `specification-guidelines/` content,
-interactively.
+`docs/readme-development.md`). **Phase 1 in progress**: knowledge-base backend code
+(`s3_backend.py` copied from `carqna-agent`, `graph.py`'s `_create_knowledge_backend()`/
+`_load_prompt_from_file()`, `.env.example`) and the `autoins-rulegen/` directory structure/assembly
+tooling are done — all six generated `target/knowledge/` directories (`knowledgenet-foundation/`,
+`application-domain/`, `application-architecture/`, `exemplars/`, `testing-guidelines/`,
+`configuration-guidelines/`) assemble via scripts under `autoins-rulegen/tools/`, see "Repository
+layout" and "Knowledge-base assembly" below. (`testing-guidelines/` and `configuration-guidelines/`
+both turned out to have real sources — `autoins/docs/testing.md` and the `configuration.md` extracted
+from it — so both moved from hand-authored to generated; only `specification-guidelines/` remains
+hand-authored.) `specification-guidelines/spec-template.md` is drafted and approved. Not yet
+committed as of this status update. Next up: `prompts/` (needs the supervisor/validator design from
+phase 2 first) and the golden fixture set — the knowledge-base content work is otherwise done.
 
 ## Plan split
 
@@ -135,14 +141,25 @@ happens:
   Written as free-form guidance, consistent with every other directory here, not a rigid
   machine-checkable schema — the validator subagent interprets it the same way the other subagents
   interpret their own guideline directories.
-- **`configuration-guidelines/`** (hand-authored) — `rule-config.json` conventions, split out from
-  `application-architecture/` for the same reason as testing below.
+- **`configuration-guidelines/`** (generated — turned out to have a real source too, once extracted:
+  `autoins/docs/configuration.md`, pulled out of `testing.md` since `rule-config.json`'s general
+  structure had no other home; verified directly against `util.py`'s `rule_config()`/`create_action()`,
+  `selection_rules.py`'s rank-based sort, and the real `autoins/data/rule-config.json`'s `G1` group
+  override) — `rule-config.json` conventions, split out from `application-architecture/` for the same
+  reason as testing below.
 - **`exemplars/`** (generated) — a deliberately curated set of reference rule implementations for the
   code-generator subagent to use as style/pattern guidance — distinct from "whatever rules currently
   exist in the app."
-- **`testing-guidelines/`** (hand-authored) — documentation of test artifact formats and workflow (e.g.
-  `autoins/docs/testing.md`'s EDI format, `expected.csv` schema, the "write data → run → dump_result →
-  promote to expected" workflow). Split out from `application-architecture/`: different lifecycle/owner
+- **`testing-guidelines/`** (generated — turned out to have a real source, `autoins/docs/testing.md`,
+  rather than needing to be hand-authored from scratch; restructured 2026-09-12 to dedupe an
+  internally-repeated section, extract `rule-config.json`'s general structure to a new
+  `autoins/docs/configuration.md` (that became `configuration-guidelines/`'s actual source, not
+  deleted — see that bullet above), fix stale `python -m pytest` commands to `uv run pytest`, and add a note — verified
+  directly against `rule_runner.init_rules()` and `05_finalization/selection_rules.py` — explaining
+  why a validation/contract/fraud-only test's `expected.csv` still contains finalization-produced
+  `pay` rows) — documentation of test artifact formats and workflow (EDI format, `expected.csv`
+  schema, the "write data → run → dump_result → promote to expected" workflow). Split out from
+  `application-architecture/`: different lifecycle/owner
   than the app's code architecture, and maps directly to the test-generator subagent's dedicated
   grounding context.
 
@@ -162,8 +179,6 @@ knowledgenet-examples/
     knowledge/                hand-authored, per-application guidance (not generated) — see the
                                (hand-authored) tags above
       specification-guidelines/
-      configuration-guidelines/
-      testing-guidelines/
     target/knowledge/         generated, gitignored — see "Knowledge-base assembly" below
     tools/                    assembly/publish scripts — see "Knowledge-base assembly" below
     prompts/                  supervisor + subagent prompts tuned for autoins
@@ -173,19 +188,27 @@ knowledgenet-examples/
 ```
 
 **Knowledge-base assembly — `target/knowledge/` is a release artifact, not hand-curated content.**
-The four (generated) directories above (`knowledgenet-foundation/`, `application-domain/`,
-`application-architecture/`, `exemplars/`) are built by scripts under `<app>-rulegen/tools/`, run as
-part of `knowledgenet`/`autoins`'s release process, that pull from those sibling repos' own real docs
-and rules (for `autoins`: `knowledgenet/docs/{concepts,rules-authoring}.md` + `docs/api/*.md`,
-`autoins/docs/description.md`, `autoins/docs/entity-relationships.md` + `autoins/src/autoins/
-{entities,fact_io,util}.py`, and `autoins/rules/{02_validation,03_contract,04_fraud}/` for exemplars
-(not `05_finalization/` — framework code, see "Explicitly out of scope" above) — see
-`autoins-rulegen/tools/README.md` for the exact mapping). `tools/` also copies the three
-(hand-authored) `knowledge/` directories in alongside
-the generated ones, so the result — `target/knowledge/` — is one complete, ready-to-ship knowledge
-base, matching the `RULEGEN_ROOT/knowledge` shape `_create_knowledge_backend()` expects. `target/`
-itself is generated and gitignored (`**/target/` is already `knowledgenet-examples`'s convention,
-matching `autoins/target/`'s own build output), never committed.
+The six (generated) directories above (`knowledgenet-foundation/`, `application-domain/`,
+`application-architecture/`, `exemplars/`, `testing-guidelines/`, `configuration-guidelines/`) are
+built by scripts under `<app>-rulegen/tools/`, run as part of `knowledgenet`/`autoins`'s release
+process, that pull from those sibling repos' own real docs and rules (for `autoins`:
+`knowledgenet/docs/{concepts, rules-authoring}.md` + `docs/api/*.md`, `autoins/docs/description.md`,
+`autoins/docs/entity-relationships.md` + `autoins/src/autoins/{entities,fact_io,util}.py`,
+`autoins/rules/{02_validation,03_contract,04_fraud}/` for exemplars (not `05_finalization/` —
+framework code, see "Explicitly out of scope" above), `autoins/docs/testing.md`, and
+`autoins/docs/configuration.md` — see `autoins-rulegen/tools/README.md` for the exact mapping).
+`tools/` also copies the one remaining (hand-authored) `knowledge/` directory
+(`specification-guidelines/`) in alongside the generated ones via its own
+`assemble-specification-guidelines.sh`, so all seven directories go through the same uniform
+per-directory-script pattern. `assemble-all.sh` orchestrates all seven in one command — clears
+`target/knowledge/` entirely and rebuilds it from scratch — given `KNOWLEDGENET_HOME` (the
+`knowledgenet` repo root) and `KNOWLEDGENET_EX_HOME` (the `knowledgenet-examples` repo root, matching
+that repo's own `CLAUDE.md` convention) already set in the environment. So the result — `target/knowledge/` —
+is one complete,
+ready-to-ship knowledge base, matching the `RULEGEN_ROOT/knowledge` shape
+`_create_knowledge_backend()` expects. `target/` itself is generated and gitignored (`**/target/` is
+already `knowledgenet-examples`'s convention, matching `autoins/target/`'s own build output), never
+committed.
 
 **Assembly is whole-file copying, never section-excerpting — source documents are restructured to
 match instead.** The first attempt at `application-domain/`'s content (excerpting the relevant
@@ -197,16 +220,25 @@ written for the old vector-store ingestion (not for human readers, and with no o
 consumer — confirmed directly with the person who authored them), there's no competing reason to
 preserve their current mixed-content shape. The rule going forward: **when a source document mixes
 content belonging to multiple target directories, restructure the source document itself so each
-file maps cleanly to one destination**, and delete content that's redundant with another file
-entirely rather than relocating it. Applied to `description.md`: trimmed to business purpose + EDI/
-CSV note + "Rulesets Overview" only (this is `application-domain/`'s entire source now, one `cp`).
-Removed: "Request Fact" (redundant with `entity-relationships.md`'s own "Request" section, the actual
-source for `application-architecture/`), "Rule Configuration" (redundant with `testing.md`'s own
-`rule-config.json` section; `configuration-guidelines/` is hand-authored anyway, not sourced from
-`docs/`), the per-rule catalog (hand-maintained and drifts from the real `rules/` directory over
-time — `exemplars/`, generated fresh from `autoins/rules/` on every assembly run, is the
-non-driftable source for "what rules currently exist" instead), and "Tests" (`testing.md` already
-owns this fully). Resolved for `application-architecture/` too, but differently: its source includes
+file maps cleanly to one destination.** Content redundant with another file that already covers it
+completely gets **deleted**; content with no other home gets **extracted** into a new file instead
+— never left in place to be excerpted. Applied to `description.md`: trimmed to business purpose +
+EDI/CSV note + "Rulesets Overview" only (this is `application-domain/`'s entire source now, one
+`cp`). Removed: "Request Fact" (redundant with `entity-relationships.md`'s own "Request" section,
+the actual source for `application-architecture/`), "Rule Configuration" (redundant with what
+`testing.md` covered at the time), the per-rule catalog (hand-maintained and drifts from the real
+`rules/` directory over time — `exemplars/`, generated fresh from `autoins/rules/` on every assembly
+run, is the non-driftable source for "what rules currently exist" instead), and "Tests" (`testing.md`
+already owns this fully). Applied to `testing.md` (2026-09-12, once it became `testing-guidelines/`'s
+actual source): deduped an internally-repeated `expected.csv` section, fixed stale `python -m pytest`
+commands, added a note (verified against `rule_runner.init_rules()` and
+`05_finalization/selection_rules.py`) on why finalization-produced `pay` actions appear in a
+validation/contract/fraud-only test's `expected.csv` — and its general `rule-config.json` structure
+section was **extracted** (not deleted) into a new `autoins/docs/configuration.md`, since nothing
+else documented that format; it's now the likely source for `configuration-guidelines/` when that
+directory gets built, superseding the "redundant with testing.md" framing used for `description.md`'s
+own removed "Rule Configuration" paragraph above. Resolved for `application-architecture/` too, but
+differently: its source includes
 real application code (`entities.py`, `fact_io.py`, `util.py`), not just docs, and that code has to
 keep working correctly for `autoins` independent of `knowledgexpert`'s needs — so unlike
 `description.md`, these files are **not** restructured/cleaned for KB purposes (e.g. `entities.py`'s
@@ -596,7 +628,7 @@ settings framework, no dedicated config class. Two kinds of env var:
   folder convention above. `mcp/` simply not existing under that root is how "this application defines
   no MCP services" (see above) is expressed — no separate flag needed. Note that for a real deployment
   `RULEGEN_ROOT/knowledge` needs to resolve to the *assembled* knowledge base, not the source
-  `<app>-rulegen/knowledge/` directly (which only has the three hand-authored dirs) — see
+  `<app>-rulegen/knowledge/` directly (which only has the one remaining hand-authored dir) — see
   "Knowledge-base assembly" above for the S3-push/zip-distribution mechanics.
 - **Retired**: the current `infrastructure/conf/{expert,raven,wolfpack}/config.json` per-role files and
   the ~30-flag `raven_cli.py`/`wolfpack_cli.py` argparse surface. Most of that surface is
@@ -793,9 +825,11 @@ None outstanding — everything raised during design discussion has been resolve
    well-tested and reusable as-is, so there's no reason to defer it behind a separate later phase.
    Includes creating `knowledgenet-examples/autoins-rulegen/` (see "Repository layout" above) —
    directory structure and knowledge-base backend code (`s3_backend.py`, `graph.py`'s
-   `_create_knowledge_backend()`/`_load_prompt_from_file()`) done — and curating the three
-   hand-authored `knowledge/` directories plus writing the `tools/` assembly/publish scripts for the
-   four generated ones (see "Knowledge-base assembly" above), prompts, and (if applicable) MCP config +
+   `_create_knowledge_backend()`/`_load_prompt_from_file()`) done, as are all six assemble scripts
+   under `tools/` (`knowledgenet-foundation/`, `application-domain/`, `application-architecture/`,
+   `exemplars/`, `testing-guidelines/`, `configuration-guidelines/` — see "Knowledge-base assembly"
+   above) — and curating the one remaining hand-authored `knowledge/` directory
+   (`specification-guidelines/`, done), prompts, and (if applicable) MCP config +
    live-data infra there for `autoins` as the reference application, plus migrating the existing
    OpenSearch infra out of `knowledgexpert/infrastructure/` into `autoins-rulegen/{mcp/,infra/}`,
    **plus the golden fixture set** (see "Testing approach" below) that phases 2-5 reuse for CLI
