@@ -55,15 +55,22 @@ started, and deliberately gated on 001 being done *and validated on real generat
   this in with the DeepAgents graph/agent code directly (flat, not nested under an `agent/`
   subpackage — that was tried and deliberately reverted, since it only existed to mirror
   `carqna-agent`'s own LangGraph-project-template naming convention, which this project doesn't need).
-- `infrastructure/` — `docker/docker-compose.yml` now has just the `opensearch` service (ChromaDB,
-  Neo4j, Ollama, `linux-exec-mcp`, and the `knowledgexpert-base` build image were all retired in phase
-  0); `conf/mcp/opensearch/` (MCP tool registration for OpenSearch — **not retired**, relocates to
-  `knowledgenet-examples/autoins-rulegen/` in phase 1 per plan 001's "Repository layout"); `conf/
-  log-config.yaml` (generic, untouched); `admin/opensearch/` (role/user/rolesmapping `ndjson`
-  fixtures).
-- `data/` — `opensearch/msrp/` (car-pricing bulk-load data), `linux-exec/insurance-docs/` (the
-  filesystem-backed corpus the `carqna-agent` `insurance_expert` subagent already reads — candidate
-  reuse for the new knowledge base, not yet decided).
+- `infrastructure/` — down to just `conf/log-config.yaml` (generic, tool-level, untouched). Everything
+  application-specific — `docker/docker-compose.yml`/`opensearch-mcp/Dockerfile` (the OpenSearch
+  container + MCP-enabling flags; the migrated `compose.sh` wrapper was dropped as dead code — it
+  translated `KNOWLEDGEXPERT_ENV` into `COMPOSE_PROFILES` to gate dev/build-only services, but those
+  services (`chromadb`/`knowledgexpert-base`) were already retired in phase 0, making it a no-op),
+  `conf/mcp/opensearch/` (MCP tool registration — `mcp-tools.json`/`agent.ndjson`), and
+  `admin/opensearch/` (role/user/rolesmapping `ndjson` fixtures, including `msrp_reader`/
+  `msrp_writer` for live MSRP access and `vector_reader`/`vector_writer`, kept deliberately for
+  anticipated future vector-DB capability even though nothing currently populates those indices) —
+  migrated 2026-09-18 to `knowledgenet-examples/autoins-rulegen/{mcp/,infra/}` per plan 001's
+  "Repository layout". Not yet decided: whether `knowledgexpert` itself orchestrates starting this
+  container for a given `RULEGEN_ROOT`, or whether that stays a manual step.
+- `data/` — `opensearch/msrp/` (car-pricing bulk-load data; still here, not migrated alongside the
+  infra above — whether it should move too, e.g. to `autoins-rulegen/infra/`, is open, not decided),
+  `linux-exec/insurance-docs/` (the filesystem-backed corpus the `carqna-agent` `insurance_expert`
+  subagent already reads — candidate reuse for the new knowledge base, not yet decided).
 - `benchmark/` — legacy `raven`/`bookworm` sample prompts. Not yet retired (phase 0 didn't touch it)
   and not part of the new architecture — don't treat it as current, but don't assume it's gone either.
 - `.plans/` — `001-...-INPROG.md` (phases 0-6, current work) and `002-...-DRAFT.md` (phases 8-10,

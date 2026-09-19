@@ -1,6 +1,6 @@
 # DeepAgents Modernization Plan for knowledgexpert
 
-Status: **INPROG (2026-09-13)** — architecture agreed via discussion, implementation started.
+Status: **INPROG (2026-09-18)** — architecture agreed via discussion, implementation started.
 **Phase 0** (clean-slate legacy retirement + `uv` tooling) is **done**: legacy Python modules/infra/
 config retired, `pyproject.toml`/`uv.lock`/in-project `.venv` in place (`uv sync` verified clean,
 package layout flat under `src/knowledgexpert/`, no nested `agent/` subpackage), and docs brought back
@@ -14,9 +14,12 @@ tooling are done — all six generated `target/knowledge/` directories (`knowled
 layout" and "Knowledge-base assembly" below. (`testing-guidelines/` and `configuration-guidelines/`
 both turned out to have real sources — `autoins/docs/testing.md` and the `configuration.md` extracted
 from it — so both moved from hand-authored to generated; only `specification-guidelines/` remains
-hand-authored.) `specification-guidelines/spec-template.md` is drafted and approved. Not yet
-committed as of this status update. Next up: `prompts/` (needs the supervisor/validator design from
-phase 2 first) and the golden fixture set — the knowledge-base content work is otherwise done.
+hand-authored.) `specification-guidelines/spec-template.md` is drafted and approved. The OpenSearch
+MCP config/infra migration into `autoins-rulegen/{mcp/,infra/}` is also **done** — see the phase-1
+deliverable bullet below for exactly what moved and what didn't (`data/opensearch/msrp/` data itself
+stayed put; container-orchestration ownership is still an open question). Not yet committed as of
+this status update. Next up: `prompts/` (needs the supervisor/validator design from phase 2 first)
+and the golden fixture set.
 
 ## Plan split
 
@@ -830,10 +833,28 @@ None outstanding — everything raised during design discussion has been resolve
    `exemplars/`, `testing-guidelines/`, `configuration-guidelines/` — see "Knowledge-base assembly"
    above) — and curating the one remaining hand-authored `knowledge/` directory
    (`specification-guidelines/`, done), prompts, and (if applicable) MCP config +
-   live-data infra there for `autoins` as the reference application, plus migrating the existing
-   OpenSearch infra out of `knowledgexpert/infrastructure/` into `autoins-rulegen/{mcp/,infra/}`,
-   **plus the golden fixture set** (see "Testing approach" below) that phases 2-5 reuse for CLI
-   verification.
+   live-data infra there for `autoins` as the reference application. The OpenSearch MCP
+   config/infra migration out of `knowledgexpert/infrastructure/` into `autoins-rulegen/{mcp/,infra/}`
+   is **done** (2026-09-18) — moved as-is (no restructuring, this is operational config/infra, not
+   curated docs), with one exception: `mcp/opensearch/{mcp-tools.json,agent.ndjson}`,
+   `infra/docker/{docker-compose.yml,opensearch-mcp/Dockerfile}`,
+   `infra/admin/opensearch/{roles,users,rolesmapping}.ndjson` (kept `vector_reader`/`vector_writer`
+   deliberately, for anticipated future vector-DB capability, not migration debt — user's explicit
+   call) all moved; `docker/compose.sh` did **not** — dropped as dead code, since it translated
+   `KNOWLEDGEXPERT_ENV` into `COMPOSE_PROFILES` to gate dev/build-only services
+   (`chromadb`/`knowledgexpert-base`, confirmed via `git log` on the pre-retirement compose file)
+   that phase 0 already retired, making it a no-op wrapper around plain
+   `docker compose -f docker-compose.yml up -d`. `knowledgexpert/infrastructure/` now holds only
+   `conf/log-config.yaml`. `data/opensearch/msrp/` (the bulk-load pricing data) did **not** move —
+   whether it should, e.g. into `autoins-rulegen/infra/`, is open, not decided. Also not decided:
+   whether `knowledgexpert` itself orchestrates starting the OpenSearch container for a given
+   `RULEGEN_ROOT`, or whether that stays a manual step (`docker compose -f
+   infra/docker/docker-compose.yml up -d`). Full build/up/down/setup instructions (security roles,
+   MCP agent/tool registration, MSRP data load) were rewritten from scratch in `infra/README.md` and
+   `mcp/README.md` (2026-09-18) — the originals were deleted outright in phase 0's README cleanup, on
+   record there as deferred until this functionality actually landed; this is that landing. **Still
+   outstanding**: the golden fixture set (see
+   "Testing approach" below) that phases 2-5 reuse for CLI verification.
    *Docs*: new knowledge-base curation guide (the seven directories plus prompts/mcp/infra, worked
    `autoins` example), and `README.md` gains an OpenSearch-as-MCP-tool section (how to define an
    application's collections) covering the infra just relocated here.
